@@ -43,22 +43,84 @@ void InputManager::onKeyReleased(sf::Keyboard::Key key) {
     currentKeys_[key] = false;
 }
 
+// -----------------------------------------------------------------------
+// Internal helper: check if any of up to 3 alternative keys match
+// -----------------------------------------------------------------------
+bool InputManager::matchesAny(const sf::Keyboard::Key* a,
+                              const sf::Keyboard::Key* b,
+                              const sf::Keyboard::Key* c,
+                              bool justPressed) const {
+    if (!bindings_) return false;
+    auto test = justPressed ? &InputManager::isKeyJustPressed
+                            : &InputManager::isKeyPressed;
+    if (a && (this->*test)(*a)) return true;
+    if (b && (this->*test)(*b)) return true;
+    if (c && (this->*test)(*c)) return true;
+    return false;
+}
+
+// -----------------------------------------------------------------------
+// Action queries
+// -----------------------------------------------------------------------
 bool InputManager::isJumpPressed() const {
-    return isKeyJustPressed(sf::Keyboard::Space) ||
-           isKeyJustPressed(sf::Keyboard::W) ||
-           isKeyJustPressed(sf::Keyboard::Up);
+    if (!bindings_) {
+        // Fallback defaults
+        return isKeyJustPressed(sf::Keyboard::Space) ||
+               isKeyJustPressed(sf::Keyboard::Up) ||
+               isKeyJustPressed(sf::Keyboard::W);
+    }
+    return matchesAny(&bindings_->jump, &bindings_->jumpAlt1, &bindings_->jumpAlt2, true);
 }
 
 bool InputManager::isCrouchPressed() const {
-    return isKeyPressed(sf::Keyboard::Down);
+    if (!bindings_) return isKeyPressed(sf::Keyboard::Down);
+    return isKeyPressed(bindings_->crouch);
 }
 
 bool InputManager::isDashPressed() const {
-    return isKeyJustPressed(sf::Keyboard::LShift) ||
-           isKeyJustPressed(sf::Keyboard::RShift);
+    if (!bindings_) {
+        return isKeyJustPressed(sf::Keyboard::LShift) ||
+               isKeyJustPressed(sf::Keyboard::RShift);
+    }
+    return matchesAny(&bindings_->dash, &bindings_->dashAlt, nullptr, true);
 }
 
 bool InputManager::isPausePressed() const {
-    return isKeyJustPressed(sf::Keyboard::Escape) ||
-           isKeyJustPressed(sf::Keyboard::P);
+    if (!bindings_) {
+        return isKeyJustPressed(sf::Keyboard::Escape) ||
+               isKeyJustPressed(sf::Keyboard::P);
+    }
+    return matchesAny(&bindings_->pause, &bindings_->pauseAlt, nullptr, true);
+}
+
+// -----------------------------------------------------------------------
+// Menu action queries
+// -----------------------------------------------------------------------
+bool InputManager::isMenuUpPressed() const {
+    if (!bindings_) {
+        return isKeyJustPressed(sf::Keyboard::Up) ||
+               isKeyJustPressed(sf::Keyboard::W);
+    }
+    return matchesAny(&bindings_->menuUp, &bindings_->menuUpAlt, nullptr, true);
+}
+
+bool InputManager::isMenuDownPressed() const {
+    if (!bindings_) {
+        return isKeyJustPressed(sf::Keyboard::Down) ||
+               isKeyJustPressed(sf::Keyboard::S);
+    }
+    return matchesAny(&bindings_->menuDown, &bindings_->menuDownAlt, nullptr, true);
+}
+
+bool InputManager::isMenuSelectPressed() const {
+    if (!bindings_) {
+        return isKeyJustPressed(sf::Keyboard::Space) ||
+               isKeyJustPressed(sf::Keyboard::Enter);
+    }
+    return matchesAny(&bindings_->menuSelect, &bindings_->menuSelectAlt, nullptr, true);
+}
+
+bool InputManager::isMenuBackPressed() const {
+    if (!bindings_) return isKeyJustPressed(sf::Keyboard::Escape);
+    return isKeyJustPressed(bindings_->menuBack);
 }

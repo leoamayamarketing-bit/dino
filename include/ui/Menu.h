@@ -9,6 +9,9 @@
 #include <vector>
 #include "../core/GameState.h"
 #include "../core/AssetManager.h"
+#include "../core/KeyBindings.h"
+
+class InputManager;
 
 class Menu {
 public:
@@ -16,7 +19,7 @@ public:
         START_GAME,
         SELECT_DINO,
         SELECT_LEVEL,
-        HIGH_SCORES,
+        OPTIONS,
         QUIT
     };
 
@@ -27,6 +30,11 @@ public:
     void update(float deltaTime);
     void render(sf::RenderWindow& window);
 
+    /// Set the InputManager for configurable menu navigation
+    void setInputManager(InputManager* input) { input_ = input; }
+    /// Set the KeyBindings for the options/remap screen
+    void setBindings(KeyBindings* bindings) { bindings_ = bindings; }
+
     MenuOption getSelectedOption() const { return selectedOption_; }
     Constants::DinoType getSelectedDino() const { return selectedDino_; }
     Constants::LevelType getSelectedLevel() const { return selectedLevel_; }
@@ -34,14 +42,19 @@ public:
     bool isLevelSelected() const { return levelSelected_; }
     bool shouldStart() const { return shouldStart_; }
 
+    bool isWaitingForKey() const { return waitingForKey_; }
+
     void reset();
     void setMenuState(int state) { menuState_ = static_cast<MenuState>(state); }
+    void buildRemapItems();
 
 private:
     enum class MenuState {
         MAIN,
         DINO_SELECT,
-        LEVEL_SELECT
+        LEVEL_SELECT,
+        OPTIONS,
+        KEY_REMAP
     };
 
     MenuState menuState_ = MenuState::MAIN;
@@ -55,23 +68,42 @@ private:
     int menuIndex_ = 0;
     int dinoIndex_ = 0;
     int levelIndex_ = 0;
+    int optionsIndex_ = 0;   // which option item is selected
+    int remapIndex_ = 0;     // which action is being remapped
+    bool waitingForKey_ = false;  // true when listening for a new key press
+
+    InputManager* input_ = nullptr;
+    KeyBindings* bindings_ = nullptr;
+
+    std::vector<KeyBindings::ActionEntry> remapActions_;
 
     sf::Text titleText_;
     std::vector<sf::Text> menuItems_;
     std::vector<sf::Text> dinoItems_;
     std::vector<sf::Text> levelItems_;
+    std::vector<sf::Text> optionsItems_;
+    std::vector<sf::Text> remapItems_;
     sf::Text instructionsText_;
+    sf::Text remapHintText_;     // "Press a key..." indicator
     sf::Sprite dinoPreview_;
     sf::Texture* dinoTexture_ = nullptr;
 
     float titleBobTimer_ = 0.0f;
     float blinkTimer_ = 0.0f;
     bool showBlink_ = true;
+    float remapBlinkTimer_ = 0.0f;
+    bool showRemapCursor_ = true;
 
     void updateMenuSelection();
     void renderMain(sf::RenderWindow& window);
     void renderDinoSelect(sf::RenderWindow& window);
     void renderLevelSelect(sf::RenderWindow& window);
+    void renderOptions(sf::RenderWindow& window);
+    void renderKeyRemap(sf::RenderWindow& window);
+
+    void startRemapping();
+    bool captureKey(sf::Keyboard::Key key);  // returns true if key was captured
+    void finishRemapping();
 };
 
 #endif

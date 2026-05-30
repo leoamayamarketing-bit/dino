@@ -213,7 +213,6 @@ void Game::handleEvents() {
 }
 
 void Game::update(float deltaTime) {
-    inputManager_.update();
     audioManager_.update();  // cleanup finished sounds
 
     switch (gameState_.currentState) {
@@ -309,6 +308,9 @@ void Game::update(float deltaTime) {
         default:
             break;
     }
+
+    // Save current keys as previous AFTER all systems have checked input
+    inputManager_.update();
 }
 
 void Game::render() {

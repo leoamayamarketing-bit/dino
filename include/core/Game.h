@@ -12,6 +12,7 @@
 #include "InputManager.h"
 #include "AssetManager.h"
 #include "AudioManager.h"
+#include "KeyBindings.h"
 #include "Constants.h"
 #include "../ecs/Entity.h"
 #include "../systems/RenderSystem.h"
@@ -44,6 +45,7 @@ private:
     InputManager inputManager_;
     AssetManager assetManager_;
     AudioManager audioManager_;
+    KeyBindings keyBindings_;
 
     // Systems
     std::vector<std::unique_ptr<System>> systems_;
