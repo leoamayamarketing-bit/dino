@@ -26,6 +26,16 @@ namespace Constants {
     constexpr float DASH_COOLDOWN = 1.0f;
     constexpr float CROUCH_HEIGHT = 0.5f;
 
+    // Jump feel improvements
+    constexpr float COYOTE_TIME = 0.08f;           // ms after leaving ground you can still jump
+    constexpr float JUMP_BUFFER_TIME = 0.1f;       // ms before landing you can buffer a jump
+    constexpr float JUMP_CUT_MULTIPLIER = 0.4f;    // velocity multiplier when releasing jump early
+    constexpr float GRAVITY_UP_FACTOR = 0.55f;     // gravity multiplier while ascending (floatier)
+    constexpr float GRAVITY_DOWN_FACTOR = 1.2f;    // gravity multiplier while falling (snappier)
+    constexpr float LANDING_SQUASH_DURATION = 0.12f;
+    constexpr float LANDING_SQUASH_X = 1.2f;       // max horizontal stretch on landing
+    constexpr float LANDING_SQUASH_Y = 0.7f;       // max vertical squash on landing
+
     // Player types
     enum class DinoType {
         TREX,

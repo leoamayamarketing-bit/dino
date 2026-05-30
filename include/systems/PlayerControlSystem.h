@@ -17,7 +17,17 @@ private:
     InputManager& input_;
     GameState& state_;
     AudioManager* audio_ = nullptr;
-    bool wasGrounded_ = true;  // for detecting jump start
+
+    // Landing / ground detection
+    bool wasGrounded_ = true;
+
+    // Jump feel helpers
+    float coyoteTimer_ = 0.0f;      // remaining coyote time (allows jump after leaving ground)
+    float jumpBufferTimer_ = 0.0f; // remaining jump buffer time (press jump early, executes on land)
+    float squashTimer_ = 0.0f;     // remaining landing squash time
+
+    // Jump-pressed tracking for detecting just-pressed / just-released
+    bool wasJumpPressed_ = false;
 };
 
 #endif

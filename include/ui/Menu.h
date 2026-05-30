@@ -11,8 +11,6 @@
 #include "../core/AssetManager.h"
 #include "../core/KeyBindings.h"
 
-class InputManager;
-
 class Menu {
 public:
     enum class MenuOption {
@@ -30,8 +28,6 @@ public:
     void update(float deltaTime);
     void render(sf::RenderWindow& window);
 
-    /// Set the InputManager for configurable menu navigation
-    void setInputManager(InputManager* input) { input_ = input; }
     /// Set the KeyBindings for the options/remap screen
     void setBindings(KeyBindings* bindings) { bindings_ = bindings; }
 
@@ -73,7 +69,6 @@ private:
     int remapIndex_ = 0;     // which action is being remapped
     bool waitingForKey_ = false;  // true when listening for a new key press
 
-    InputManager* input_ = nullptr;
     KeyBindings* bindings_ = nullptr;
 
     std::vector<KeyBindings::ActionEntry> remapActions_;
@@ -103,7 +98,6 @@ private:
     void renderKeyRemap(sf::RenderWindow& window);
 
     void startRemapping();
-    bool captureKey(sf::Keyboard::Key key);  // returns true if key was captured
     void finishRemapping();
 };
 

@@ -167,9 +167,8 @@ void Menu::handleInput(const GameState& state) {
     }
 
     // ----- Navigation (just-pressed style) -----
-    // Use SFML direct checks since input_->isMenuUpPressed uses isKeyJustPressed internally
-    // which depends on InputManager event processing. For menu, simple polling is fine.
-    bool moved = false;
+    // For menu, we poll keyboard state directly via sf::Keyboard::isKeyPressed
+    // using the configured bindings. This allows hold-to-scroll via OS key repeat.
     int maxIndex = 0;
 
     switch (menuState_) {
@@ -183,16 +182,13 @@ void Menu::handleInput(const GameState& state) {
     if (navUp()) {
         menuIndex_--;
         if (menuIndex_ < 0) menuIndex_ = 0;
-        moved = true;
     }
     if (navDown()) {
         menuIndex_++;
         if (menuIndex_ > maxIndex) menuIndex_ = maxIndex;
-        moved = true;
     }
 
     if (navSelect()) {
-        moved = true;
         switch (menuState_) {
             case MenuState::MAIN:
                 switch (menuIndex_) {
@@ -277,12 +273,7 @@ void Menu::handleInput(const GameState& state) {
         }
     }
 
-    // When in KEY_REMAP, rebuild items if waiting state changed
-    if (menuState_ == MenuState::KEY_REMAP) {
-        updateMenuSelection();
-    } else {
-        updateMenuSelection();
-    }
+    updateMenuSelection();
 }
 
 void Menu::startRemapping() {
@@ -301,6 +292,7 @@ bool Menu::captureKey(sf::Keyboard::Key key) {
     if (key == sf::Keyboard::Escape) {
         waitingForKey_ = false;
         buildRemapItems();
+        updateMenuSelection();
         return true;
     }
     if (menuIndex_ >= 0 && menuIndex_ < static_cast<int>(remapActions_.size())) {

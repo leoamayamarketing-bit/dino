@@ -1,6 +1,7 @@
 #include "../../include/systems/PhysicsSystem.h"
 #include "../../include/components/TransformComponent.h"
 #include "../../include/components/PhysicsComponent.h"
+#include "../../include/core/Constants.h"
 
 void PhysicsSystem::update(float deltaTime, std::vector<Entity*>& entities) {
     for (auto* entity : entities) {
@@ -9,9 +10,17 @@ void PhysicsSystem::update(float deltaTime, std::vector<Entity*>& entities) {
 
         if (!transform || !physics) continue;
 
-        // Apply gravity
+        // Apply gravity with curve (lighter going up, heavier falling)
         if (physics->usesGravity && !physics->isGrounded) {
-            physics->velocity.y += gravity_ * deltaTime;
+            float grav = gravity_;
+            if (physics->velocity.y < 0.0f) {
+                // Ascending — reduced gravity for a more forgiving, floaty arc
+                grav *= Constants::GRAVITY_UP_FACTOR;
+            } else {
+                // Descending — increased gravity for snappier fall and landing
+                grav *= Constants::GRAVITY_DOWN_FACTOR;
+            }
+            physics->velocity.y += grav * deltaTime;
         }
 
         // Apply acceleration
