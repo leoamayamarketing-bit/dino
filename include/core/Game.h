@@ -90,9 +90,6 @@ private:
     void emitExplosionParticles(sf::Vector2f position);
     void emitPowerUpParticles(sf::Vector2f position, Constants::PowerUpType type);
     void emitComboParticles(sf::Vector2f position, int comboCount);
-
-    // Combo tracking for milestones
-    int lastComboMilestone_ = 0;
 };
 
 #endif

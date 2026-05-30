@@ -10,6 +10,7 @@
 #include "../../include/components/CoinComponent.h"
 #include "../../include/components/PowerUpComponent.h"
 #include <SFML/Graphics/RenderTexture.hpp>
+#include <SFML/Graphics/View.hpp>
 #include <algorithm>
 
 Game::Game()
@@ -43,6 +44,19 @@ void Game::init() {
         menu_.init(font, assetManager_);
         menu_.setBindings(&keyBindings_);
         hud_.init(font);
+        hud_.onComboMilestone = [this](int comboCount, sf::Vector2f screenPos) {
+            audioManager_.playSound("combo");
+            emitComboParticles(screenPos, comboCount);
+
+            // Extra screen shake for high combos
+            if (comboCount >= 10) {
+                gameState_.screenShakeIntensity = 6.0f;
+                gameState_.screenShakeTimer = 0.25f;
+            } else if (comboCount >= 5) {
+                gameState_.screenShakeIntensity = 3.0f;
+                gameState_.screenShakeTimer = 0.15f;
+            }
+        };
         gameOverScreen_.init(font);
     }
 
@@ -103,41 +117,24 @@ void Game::initCollisionRules() {
                     gameState_.shieldTimer = 0.0f;
                     audioManager_.playSound("shield");
 
+                    // Explosion sound + screen shake
+                    audioManager_.playSound("explosion");
+                    gameState_.screenShakeIntensity = 8.0f;
+                    gameState_.screenShakeTimer = 0.3f;
+
                     auto* enemyTrans = enemy->getComponent<TransformComponent>();
                     if (enemyTrans) {
-                        // Fire/explosion burst
-                        particleSystem_.emit(
-                            enemyTrans->position,
-                            15,                       // 15 fire particles
-                            sf::Color(255, 100, 0),   // orange fire
-                            200.0f,                   // speed
-                            0.8f,                     // lifetime
-                            6.0f                      // size
-                        );
-                        // Bright yellow sparks
-                        particleSystem_.emit(
-                            enemyTrans->position,
-                            8,
-                            sf::Color(255, 255, 100), // yellow sparks
-                            150.0f,
-                            0.5f,
-                            4.0f
-                        );
-                        // Gray debris fragments
-                        particleSystem_.emit(
-                            enemyTrans->position,
-                            6,
-                            sf::Color(160, 140, 120), // gray/brown debris
-                            100.0f,
-                            0.6f,
-                            3.0f
-                        );
+                        emitExplosionParticles(enemyTrans->position);
                     }
 
                     // Destroy the enemy
                     enemy->setActive(false);
                     return;
                 }
+                // Screen shake on damage
+                gameState_.screenShakeIntensity = 5.0f;
+                gameState_.screenShakeTimer = 0.2f;
+
                 health->takeDamage(1);
                 gameState_.lives = health->health;
                 audioManager_.playSound("damage");
@@ -161,23 +158,7 @@ void Game::initCollisionRules() {
                 // Emit golden particle burst at coin position
                 auto* trans = coin->getComponent<TransformComponent>();
                 if (trans) {
-                    particleSystem_.emit(
-                        trans->position,
-                        12,                    // 12 particles
-                        sf::Color(255, 215, 0), // gold
-                        120.0f,                 // speed
-                        0.6f,                   // lifetime
-                        5.0f                    // size
-                    );
-                    // Second burst with lighter/golden sparkles
-                    particleSystem_.emit(
-                        trans->position,
-                        6,
-                        sf::Color(255, 255, 200), // light gold
-                        80.0f,
-                        0.4f,
-                        3.0f
-                    );
+                    emitCoinParticles(trans->position);
                 }
             }
         });
@@ -188,6 +169,13 @@ void Game::initCollisionRules() {
             if (pu && !pu->collected) {
                 pu->collected = true;
                 audioManager_.playSound("powerup");
+
+                // Emit particles matching the power-up type
+                auto* trans = powerup->getComponent<TransformComponent>();
+                if (trans) {
+                    emitPowerUpParticles(trans->position, pu->powerUpType);
+                }
+
                 switch (pu->powerUpType) {
                     case Constants::PowerUpType::SHIELD:
                         gameState_.shieldActive = true;
@@ -340,6 +328,9 @@ void Game::update(float deltaTime) {
             // Update particle system
             particleSystem_.updateParticles(deltaTime);
 
+            // Update screen shake
+            updateScreenShake(deltaTime);
+
             // Update HUD with deltaTime for popup/combo animations
             hud_.update(gameState_, deltaTime);
 
@@ -369,6 +360,10 @@ void Game::update(float deltaTime) {
 void Game::render() {
     window_.clear();
 
+    // Apply screen shake to game view (affects entities/background but not HUD)
+    sf::View gameView = window_.getDefaultView();
+    applyScreenShake(gameView);
+
     switch (gameState_.currentState) {
         case Constants::GameStateType::MENU:
             menu_.render(window_);
@@ -377,6 +372,8 @@ void Game::render() {
         case Constants::GameStateType::PLAYING:
         case Constants::GameStateType::PAUSED:
         {
+            window_.setView(gameView);
+
             // Render level background
             levelManager_.render(window_);
 
@@ -393,6 +390,9 @@ void Game::render() {
 
             // Render particles (on top of entities)
             particleSystem_.render(window_);
+
+            // Reset view for HUD (HUD stays rock-steady)
+            window_.setView(window_.getDefaultView());
 
             // Render HUD
             hud_.render(window_);
@@ -506,6 +506,72 @@ void Game::updateSpeed(float deltaTime) {
             gameState_.currentSpeed + Constants::SPEED_INCREMENT,
             Constants::MAX_SPEED);
     }
+}
+
+void Game::updateScreenShake(float deltaTime) {
+    if (gameState_.screenShakeTimer > 0.0f) {
+        gameState_.screenShakeTimer -= deltaTime;
+        if (gameState_.screenShakeTimer <= 0.0f) {
+            gameState_.screenShakeIntensity = 0.0f;
+        }
+    }
+}
+
+void Game::applyScreenShake(sf::View& view) {
+    if (gameState_.screenShakeTimer > 0.0f && gameState_.screenShakeIntensity > 0.0f) {
+        float shakeX = (std::rand() % 200 - 100) / 100.0f * gameState_.screenShakeIntensity;
+        float shakeY = (std::rand() % 200 - 100) / 100.0f * gameState_.screenShakeIntensity;
+        view.move(shakeX, shakeY);
+    }
+}
+
+// ── Particle Emission Helpers ────────────────────────────────────────────
+
+void Game::emitCoinParticles(sf::Vector2f position) {
+    // Primary gold burst
+    particleSystem_.emit(position, 12, sf::Color(255, 215, 0), 120.0f, 0.6f, 5.0f);
+    // Light gold sparkles
+    particleSystem_.emit(position, 6, sf::Color(255, 255, 200), 80.0f, 0.4f, 3.0f);
+}
+
+void Game::emitExplosionParticles(sf::Vector2f position) {
+    // Fire/explosion burst
+    particleSystem_.emit(position, 15, sf::Color(255, 100, 0), 200.0f, 0.8f, 6.0f);
+    // Bright yellow sparks
+    particleSystem_.emit(position, 8, sf::Color(255, 255, 100), 150.0f, 0.5f, 4.0f);
+    // Gray debris fragments
+    particleSystem_.emit(position, 6, sf::Color(160, 140, 120), 100.0f, 0.6f, 3.0f);
+}
+
+void Game::emitPowerUpParticles(sf::Vector2f position, Constants::PowerUpType type) {
+    sf::Color color;
+    switch (type) {
+        case Constants::PowerUpType::SHIELD:        color = sf::Color(0, 200, 255); break;   // cyan
+        case Constants::PowerUpType::MAGNET:        color = sf::Color(200, 50, 255); break;   // purple
+        case Constants::PowerUpType::DOUBLE_POINTS:  color = sf::Color(255, 200, 0); break;   // gold
+        case Constants::PowerUpType::SPEED_BOOST:    color = sf::Color(50, 220, 80); break;    // green
+        case Constants::PowerUpType::EXTRA_LIFE:     color = sf::Color(255, 80, 80); break;    // red
+        default: color = sf::Color::White; break;
+    }
+    // Main burst
+    particleSystem_.emit(position, 10, color, 150.0f, 0.7f, 5.0f);
+    // Secondary white sparkles
+    particleSystem_.emit(position, 5, sf::Color(255, 255, 255), 100.0f, 0.4f, 3.0f);
+}
+
+void Game::emitComboParticles(sf::Vector2f position, int comboCount) {
+    // More particles for higher combos
+    int count = std::min(8 + comboCount * 2, 30);
+    float size = std::min(3.0f + comboCount * 0.5f, 8.0f);
+    float speed = 100.0f + comboCount * 20.0f;
+
+    // Golden burst
+    particleSystem_.emit(position, count, sf::Color(255, 215, 0), speed, 0.8f, size);
+    // White flash
+    particleSystem_.emit(position, count / 2, sf::Color(255, 255, 255), speed * 1.2f, 0.5f, size * 0.6f);
+    // Colored accent
+    sf::Color accent(255, 200 - comboCount * 20, 50);
+    particleSystem_.emit(position, count / 3, accent, speed * 0.8f, 0.6f, size * 0.8f);
 }
 
 void Game::updatePowerUps(float deltaTime) {

@@ -6,6 +6,7 @@
 #include <SFML/Graphics/Font.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/CircleShape.hpp>
+#include <functional>
 #include <vector>
 #include "../core/GameState.h"
 
@@ -87,6 +88,14 @@ private:
     float lastCoinTime_ = 0.0f;
     float comboTimeWindow_ = 1.5f;
 
+    // ── Combo milestone callback ────────────────────────────────────────
+    int lastMilestoneTriggered_ = 0;
+
+public:
+    // Callback for combo milestones (set by Game)
+    std::function<void(int comboCount, sf::Vector2f screenPos)> onComboMilestone;
+
+private:
     // ── Internal helpers ───────────────────────────────────────────────
     void updateScoreSection(const GameState& state);
     void updateDistanceSection(const GameState& state);

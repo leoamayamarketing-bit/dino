@@ -137,8 +137,24 @@ void HUD::update(const GameState& state, float deltaTime) {
         // Combo tracking: if within time window, increment combo
         if (lastCoinTime_ > 0.0f && lastCoinTime_ < comboTimeWindow_) {
             lastComboCount_++;
+            // Check for combo milestones (3, 5, 10, 15, 20...)
+            int milestones[] = {3, 5, 10, 15, 20, 30, 50};
+            for (int m : milestones) {
+                if (lastComboCount_ == m && m != lastMilestoneTriggered_) {
+                    lastMilestoneTriggered_ = m;
+                    if (onComboMilestone) {
+                        sf::Vector2f screenPos(
+                            Constants::WINDOW_WIDTH / 2.0f,
+                            Constants::GROUND_Y - 200.0f
+                        );
+                        onComboMilestone(m, screenPos);
+                    }
+                    break;
+                }
+            }
         } else {
             lastComboCount_ = 1;
+            lastMilestoneTriggered_ = 0;
         }
         comboVisibleTimer_ = 1.5f;
         lastCoinTime_ = 0.0f;
@@ -146,6 +162,7 @@ void HUD::update(const GameState& state, float deltaTime) {
         lastCoinTime_ += deltaTime;
         if (lastCoinTime_ > comboTimeWindow_) {
             lastComboCount_ = 0;
+            lastMilestoneTriggered_ = 0;
         }
     }
     
