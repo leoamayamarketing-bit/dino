@@ -19,6 +19,9 @@ public:
     virtual void render(sf::RenderWindow& window) = 0;
     virtual void spawnObstacles(GameState& state, AssetManager& assets) = 0;
     virtual Constants::LevelType getType() const = 0;
+    /// Returns the effective theme (same as getType() for regular levels,
+    /// but for InfiniteLevel it returns the current dynamic theme)
+    virtual Constants::LevelType getEffectiveTheme() const { return getType(); }
 
 protected:
     float spawnTimer_ = 0.0f;

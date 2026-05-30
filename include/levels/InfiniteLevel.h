@@ -11,6 +11,7 @@ public:
     void render(sf::RenderWindow& window) override;
     void spawnObstacles(GameState& state, AssetManager& assets) override;
     Constants::LevelType getType() const override { return Constants::LevelType::INFINITE; }
+    Constants::LevelType getEffectiveTheme() const override { return currentTheme_; }
 
 private:
     ParallaxSystem parallax_;

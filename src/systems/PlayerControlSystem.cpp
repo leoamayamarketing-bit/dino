@@ -40,7 +40,9 @@ void PlayerControlSystem::update(float deltaTime, std::vector<Entity*>& entities
 
         // Land on ground (after being in air)
         if (physics->isGrounded && !wasGrounded) {
-            // Could play landing sound here
+            if (audio_) {
+                audio_->playSound("land");
+            }
         }
 
         // Crouch

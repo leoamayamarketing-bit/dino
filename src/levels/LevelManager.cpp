@@ -34,6 +34,13 @@ Constants::LevelType LevelManager::getCurrentLevelType() const {
     return currentType_;
 }
 
+Constants::LevelType LevelManager::getEffectiveTheme() const {
+    if (currentLevel_) {
+        return currentLevel_->getEffectiveTheme();
+    }
+    return currentType_;
+}
+
 std::unique_ptr<Level> LevelManager::createLevel(Constants::LevelType type) {
     switch (type) {
         case Constants::LevelType::DESERT_DAY:

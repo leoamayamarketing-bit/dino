@@ -2,11 +2,17 @@
 #define CORE_AUDIOMANAGER_H
 
 #include <windows.h>
+#include <mmsystem.h>
+// Windows macros that conflict with C++ identifiers
+#undef INFINITE
+#undef min
+#undef max
 #include <string>
 #include <unordered_map>
 #include <memory>
 #include <vector>
 #include <cstdint>
+#include "Constants.h"
 
 class AudioManager {
 public:
@@ -20,8 +26,11 @@ public:
     void playSound(const std::string& name);
 
     /// Start/stop background music
-    void startMusic();
+    void startMusic(Constants::LevelType theme = Constants::LevelType::DESERT_DAY);
     void stopMusic();
+
+    /// Get current playing theme
+    Constants::LevelType currentTheme() const { return currentTheme_; }
 
     /// Call every frame to clean up finished playback
     void update();
@@ -67,8 +76,11 @@ private:
     /// Generate PCM samples from parameters
     std::vector<int16_t> generateSamples(const SoundParams& params);
 
-    /// Generate background music samples (melody + bass + chords)
-    std::vector<int16_t> generateMusicSamples(float duration, float bpm);
+    /// Generate background music samples (per-theme)
+    std::vector<int16_t> generateMusicDesertDay(float duration);
+    std::vector<int16_t> generateMusicDesertNight(float duration);
+    std::vector<int16_t> generateMusicCave(float duration);
+    std::vector<int16_t> generateMusicVolcano(float duration);
 
     /// Create a SoundBuffer from params
     SoundBuffer createSoundBuffer(const SoundParams& params);
@@ -83,6 +95,7 @@ private:
     float soundVolume_ = 80.0f;
     float musicVolume_ = 50.0f;
     bool muted_ = false;
+    Constants::LevelType currentTheme_ = Constants::LevelType::DESERT_DAY;
 
     static constexpr unsigned int SAMPLE_RATE = 44100;
 };

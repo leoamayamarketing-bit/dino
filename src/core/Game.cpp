@@ -173,6 +173,14 @@ void Game::handleEvents() {
         }
         if (event.type == sf::Event::KeyPressed) {
             if (gameState_.currentState == Constants::GameStateType::MENU) {
+                // Play select sound on navigation/confirm keys (not escape)
+                auto key = event.key.code;
+                if ((key == sf::Keyboard::Up || key == sf::Keyboard::Down ||
+                     key == sf::Keyboard::W || key == sf::Keyboard::S ||
+                     key == sf::Keyboard::Space || key == sf::Keyboard::Enter) &&
+                    event.key.code != sf::Keyboard::Escape) {
+                    audioManager_.playSound("select");
+                }
                 menu_.handleInput(gameState_);
                 if (menu_.shouldStart()) {
                     gameState_.selectedDino = menu_.getSelectedDino();
@@ -218,6 +226,14 @@ void Game::update(float deltaTime) {
             // Update speed
             updateSpeed(deltaTime);
             updatePowerUps(deltaTime);
+
+            // Check for music theme changes (handles InfiniteLevel theme transitions)
+            {
+                Constants::LevelType effectiveTheme = levelManager_.getEffectiveTheme();
+                if (effectiveTheme != audioManager_.currentTheme()) {
+                    audioManager_.startMusic(effectiveTheme);
+                }
+            }
 
             // Update distance
             gameState_.distance += gameState_.currentSpeed * deltaTime * 0.1f;
@@ -409,8 +425,8 @@ void Game::startGame() {
     // Initialize level
     levelManager_.init(gameState_.currentLevel, assetManager_, gameState_);
 
-    // Start background music
-    audioManager_.startMusic();
+    // Start background music with level-appropriate theme
+    audioManager_.startMusic(gameState_.currentLevel);
 }
 
 void Game::checkGameOver() {

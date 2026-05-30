@@ -21,6 +21,8 @@ public:
 
     void switchLevel(Constants::LevelType type, AssetManager& assets, GameState& state);
     Constants::LevelType getCurrentLevelType() const;
+    /// Returns the effective theme (accounts for InfiniteLevel switching themes)
+    Constants::LevelType getEffectiveTheme() const;
 
 private:
     std::unique_ptr<Level> currentLevel_;
