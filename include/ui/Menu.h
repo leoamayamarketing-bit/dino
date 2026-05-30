@@ -43,6 +43,7 @@ public:
     bool shouldStart() const { return shouldStart_; }
 
     bool isWaitingForKey() const { return waitingForKey_; }
+    bool captureKey(sf::Keyboard::Key key);  // returns true if key was captured
 
     void reset();
     void setMenuState(int state) { menuState_ = static_cast<MenuState>(state); }

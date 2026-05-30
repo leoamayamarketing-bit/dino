@@ -316,6 +316,7 @@ bool Menu::captureKey(sf::Keyboard::Key key) {
         bindings_->saveToFile("keybindings.cfg");
     }
     buildRemapItems();
+    updateMenuSelection();
     return true;
 }
 

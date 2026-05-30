@@ -4,6 +4,7 @@
 #include <SFML/Window/Keyboard.hpp>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 /// Maps action names to SFML key codes for fully configurable controls.
 struct KeyBindings {
