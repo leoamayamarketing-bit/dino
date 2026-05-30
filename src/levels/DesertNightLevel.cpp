@@ -48,7 +48,7 @@ void DesertNightLevel::update(float deltaTime, AssetManager& assets, GameState& 
 }
 
 void DesertNightLevel::render(sf::RenderWindow& window) {
-    sf::RectangleShape sky(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::GROUND_Y + 120));
+    sf::RectangleShape sky(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT));
     sky.setFillColor(skyColor_);
     window.draw(sky);
 

@@ -16,7 +16,9 @@ error/*
 .idea/
 *.swp
 *.swo
+nul
 *~
+capture_dino/*
 .DS_Store
 Thumbs.db
 sfml/*

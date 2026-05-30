@@ -57,7 +57,7 @@ void DesertDayLevel::update(float deltaTime, AssetManager& assets, GameState& st
 
 void DesertDayLevel::render(sf::RenderWindow& window) {
     // Draw background
-    sf::RectangleShape sky(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::GROUND_Y + 120));
+    sf::RectangleShape sky(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT));
     sky.setFillColor(skyColor_);
     window.draw(sky);
 

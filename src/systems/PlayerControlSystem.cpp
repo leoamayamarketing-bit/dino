@@ -1,4 +1,5 @@
 #include "../../include/systems/PlayerControlSystem.h"
+#include "../../include/core/AssetManager.h"
 #include "../../include/components/TransformComponent.h"
 #include "../../include/components/PhysicsComponent.h"
 #include "../../include/components/PlayerComponent.h"
@@ -7,8 +8,9 @@
 #include "../../include/core/AudioManager.h"
 #include "../../include/core/Constants.h"
 
-PlayerControlSystem::PlayerControlSystem(InputManager& input, GameState& state, AudioManager* audio)
-    : input_(input), state_(state), audio_(audio) {}
+PlayerControlSystem::PlayerControlSystem(InputManager& input, GameState& state,
+                                         AudioManager* audio, AssetManager* assets)
+    : input_(input), state_(state), audio_(audio), assetManager_(assets) {}
 
 void PlayerControlSystem::update(float deltaTime, std::vector<Entity*>& entities) {
     for (auto* entity : entities) {
@@ -120,9 +122,10 @@ void PlayerControlSystem::update(float deltaTime, std::vector<Entity*>& entities
         }
 
         // ------------------------------------------------------------------
-        // 8. Crouch
+        // 8. Crouch (with progressive animation)
         // ------------------------------------------------------------------
-        player->isCrouching = input_.isCrouchPressed() && physics->isGrounded;
+        bool crouchPressed = input_.isCrouchPressed() && physics->isGrounded;
+        player->isCrouching = crouchPressed;
 
         // ------------------------------------------------------------------
         // 9. Apply squash / crouch / normal scale
@@ -155,24 +158,87 @@ void PlayerControlSystem::update(float deltaTime, std::vector<Entity*>& entities
         }
 
         // ------------------------------------------------------------------
-        // 11. Animation state switching
+        // 11. Animation state switching (with progressive crouch)
         // ------------------------------------------------------------------
         if (anim) {
             if (!physics->isGrounded && anim->hasAnimation("jump")) {
                 if (anim->currentAnimation != "jump") {
                     anim->play("jump");
                     anim->looping = false;
+                    crouchProgress_ = 0.0f;
                 }
-            } else if (player->isCrouching && anim->hasAnimation("crouch")) {
-                if (anim->currentAnimation != "crouch") {
-                    anim->play("crouch");
-                    anim->looping = true;
+            } else if (player->isCrouching) {
+                // ─── Crouch animation (progressive if PNG textures available) ──
+                if (anim->hasAnimation("crouch")) {
+                    if (anim->currentAnimation != "crouch") {
+                        anim->play("crouch");
+                        anim->looping = true;
+                        crouchProgress_ = 0.0f;
+                    }
+
+                    // Progressive crouch: animate through frames 01→07
+                    if (anim->useSeparateTextures && assetManager_) {
+                        crouchProgress_ += deltaTime * CROUCH_SPEED;
+                        if (crouchProgress_ > 1.0f) crouchProgress_ = 1.0f;
+
+                        // Map progress 0→1 to frames dino_frame_01 through dino_frame_07
+                        int frameIdx = FIRST_CROUCH_FRAME +
+                            static_cast<int>(crouchProgress_ * (NUM_CROUCH_FRAMES - 1));
+                        if (frameIdx > FIRST_CROUCH_FRAME + NUM_CROUCH_FRAMES - 1)
+                            frameIdx = FIRST_CROUCH_FRAME + NUM_CROUCH_FRAMES - 1;
+
+                        // Build the texture name for this frame
+                        std::string texName = "dino_frame_";
+                        if (frameIdx < 10) texName += "0";
+                        texName += std::to_string(frameIdx);
+
+                        if (assetManager_->hasTexture(texName) && sprite) {
+                            sf::Texture& tex = assetManager_->getTexture(texName);
+                            sprite->sprite.setTexture(tex);
+                            sprite->sprite.setTextureRect(sf::IntRect(0, 0,
+                                static_cast<int>(tex.getSize().x),
+                                static_cast<int>(tex.getSize().y)));
+                        }
+                    }
                 }
-            } else {
-                if (anim->currentAnimation != "run") {
+            } else if (!player->isCrouching && anim->currentAnimation == "crouch") {
+                // ─── Standing up animation ────────────────────────────────
+                // Show "stand" frame (dino_08.png) briefly before returning to run
+                if (anim->hasAnimation("stand")) {
+                    anim->play("stand");
+                    anim->looping = false;
+                    standTimer_ = STAND_DURATION;
+
+                    // Set stand texture directly
+                    if (anim->useSeparateTextures && assetManager_ && sprite) {
+                        std::string texName = "dino_frame_08";
+                        if (assetManager_->hasTexture(texName)) {
+                            sf::Texture& tex = assetManager_->getTexture(texName);
+                            sprite->sprite.setTexture(tex);
+                            sprite->sprite.setTextureRect(sf::IntRect(0, 0,
+                                static_cast<int>(tex.getSize().x),
+                                static_cast<int>(tex.getSize().y)));
+                        }
+                    }
+                } else if (anim->hasAnimation("run")) {
                     anim->play("run");
                     anim->looping = true;
                 }
+                crouchProgress_ = 0.0f;
+            } else if (anim->currentAnimation == "stand") {
+                // Wait for stand animation to finish, then switch to run
+                standTimer_ -= deltaTime;
+                if (standTimer_ <= 0.0f && anim->hasAnimation("run")) {
+                    anim->play("run");
+                    anim->looping = true;
+                }
+            } else {
+                // Default: run animation
+                if (anim->currentAnimation != "run" && anim->hasAnimation("run")) {
+                    anim->play("run");
+                    anim->looping = true;
+                }
+                crouchProgress_ = 0.0f;
             }
         }
     }

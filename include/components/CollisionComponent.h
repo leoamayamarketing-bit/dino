@@ -17,13 +17,17 @@ struct CollisionComponent : public Component {
     // Callback ID for collision events
     int collisionCallbackId = -1;
 
+    // Local offset from transform position (origin) to collision box top-left.
+    // Useful when sprite origin is not at its top-left (e.g. centered / bottom-anchored).
+    sf::Vector2f localOffset{0.0f, 0.0f};
+
     explicit CollisionComponent(const sf::FloatRect& rect = {}, const std::string& t = "")
         : bounds(rect), tag(t) {}
 
     void setBounds(const sf::FloatRect& rect) { bounds = rect; }
     void updatePosition(float x, float y) {
-        bounds.left = x;
-        bounds.top = y;
+        bounds.left = x + localOffset.x;
+        bounds.top = y + localOffset.y;
     }
 };
 

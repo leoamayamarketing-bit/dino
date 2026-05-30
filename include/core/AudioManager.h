@@ -1,18 +1,29 @@
 #ifndef CORE_AUDIOMANAGER_H
 #define CORE_AUDIOMANAGER_H
 
+#include <string>
+#include <unordered_map>
+#include <memory>
+#include <vector>
+#include <cstdint>
+#include <algorithm>
+#include "Constants.h"
+
+// ---------------------------------------------------------------------------
+// Platform-specific audio backend selection
+//   Windows  → Win32 waveOut API (winmm)
+//   Linux    → SFML Audio (wraps OpenAL)
+// ---------------------------------------------------------------------------
+#ifdef _WIN32
 #include <windows.h>
 #include <mmsystem.h>
 // Windows macros that conflict with C++ identifiers
 #undef INFINITE
 #undef min
 #undef max
-#include <string>
-#include <unordered_map>
-#include <memory>
-#include <vector>
-#include <cstdint>
-#include "Constants.h"
+#else
+#include <SFML/Audio.hpp>
+#endif
 
 class AudioManager {
 public:
@@ -58,12 +69,16 @@ private:
         float release = 0.05f;        // seconds
     };
 
-    /// A buffer of raw PCM 16-bit mono samples
+    /// A buffer of raw PCM 16-bit mono samples (cross-platform)
     struct SoundBuffer {
         std::vector<int16_t> samples;
         unsigned int sampleRate = 44100;
     };
 
+    // -----------------------------------------------------------------------
+    // Platform-specific playback instance
+    // -----------------------------------------------------------------------
+#ifdef _WIN32
     /// Active playback instance wrapping a Win32 waveOut handle
     struct PlaybackInstance {
         HWAVEOUT hWaveOut = nullptr;
@@ -72,8 +87,17 @@ private:
         bool isMusic = false;
         ~PlaybackInstance();  // ensures proper cleanup
     };
+#else
+    /// Active playback instance wrapping SFML Sound + SoundBuffer
+    struct PlaybackInstance {
+        sf::SoundBuffer buffer;
+        sf::Sound sound;
+        bool isMusic = false;
+        // RAII handles cleanup – no custom destructor needed
+    };
+#endif
 
-    /// Generate PCM samples from parameters
+    /// Generate PCM samples from parameters (cross-platform)
     std::vector<int16_t> generateSamples(const SoundParams& params);
 
     /// Generate background music samples (per-theme)
@@ -85,7 +109,7 @@ private:
     /// Create a SoundBuffer from params
     SoundBuffer createSoundBuffer(const SoundParams& params);
 
-    /// Actually play raw PCM samples via Win32 waveOut
+    /// Actually play raw PCM samples (platform-specific)
     void playRaw(const std::vector<int16_t>& samples, unsigned int sampleRate);
 
     std::unordered_map<std::string, SoundBuffer> buffers_;

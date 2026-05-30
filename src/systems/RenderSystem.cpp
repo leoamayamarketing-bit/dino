@@ -1,4 +1,5 @@
 #include "../../include/systems/RenderSystem.h"
+#include "../../include/core/AssetManager.h"
 #include "../../include/components/TransformComponent.h"
 #include "../../include/components/SpriteComponent.h"
 #include "../../include/components/AnimationComponent.h"
@@ -27,6 +28,18 @@ void RenderSystem::update(float, std::vector<Entity*>& entities) {
         if (anim && anim->currentFrames && !anim->currentFrames->empty()) {
             sf::IntRect frame = anim->getCurrentFrame();
             sprite->sprite.setTextureRect(frame);
+
+            // If the animation uses separate textures per frame, switch texture
+            if (anim->useSeparateTextures && assetManager_) {
+                std::string texName = anim->getCurrentTextureName();
+                if (!texName.empty() && assetManager_->hasTexture(texName)) {
+                    sf::Texture& tex = assetManager_->getTexture(texName);
+                    sprite->sprite.setTexture(tex);
+                    sprite->sprite.setTextureRect(sf::IntRect(0, 0,
+                        tex.getSize().x, tex.getSize().y));
+                }
+            }
+
             if (anim->flipped) {
                 sprite->sprite.setScale(-std::abs(transform->scale.x), transform->scale.y);
             } else {
@@ -40,6 +53,10 @@ void RenderSystem::update(float, std::vector<Entity*>& entities) {
 
         window_.draw(sprite->sprite);
     }
+}
+
+void RenderSystem::setAssetManager(AssetManager* mgr) {
+    assetManager_ = mgr;
 }
 
 void RenderSystem::setView(const sf::View& view) {

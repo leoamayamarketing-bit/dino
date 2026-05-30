@@ -12,7 +12,7 @@ namespace Constants {
 
     // Physics
     constexpr float GRAVITY = 1800.0f;
-    constexpr float GROUND_Y = 600.0f;
+    constexpr float GROUND_Y = 420.0f;
     constexpr float BASE_SPEED = 400.0f;
     constexpr float MAX_SPEED = 900.0f;
     constexpr float SPEED_INCREMENT = 2.0f;

@@ -68,7 +68,7 @@ void VolcanoLevel::update(float deltaTime, AssetManager& assets, GameState& stat
 
 void VolcanoLevel::render(sf::RenderWindow& window) {
     // Dark red sky
-    sf::RectangleShape sky(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::GROUND_Y + 120));
+    sf::RectangleShape sky(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT));
     sky.setFillColor(skyColor_);
     window.draw(sky);
 

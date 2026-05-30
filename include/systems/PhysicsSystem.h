@@ -2,6 +2,7 @@
 #define SYSTEMS_PHYSICS_H
 
 #include "../ecs/Entity.h"
+#include "../core/Constants.h"
 
 class PhysicsSystem : public System {
 public:
@@ -11,7 +12,7 @@ public:
 
 private:
     float gravity_ = 1800.0f;
-    float groundY_ = 600.0f;
+    float groundY_ = Constants::GROUND_Y;
 };
 
 #endif

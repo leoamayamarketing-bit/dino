@@ -52,7 +52,7 @@ void InfiniteLevel::update(float deltaTime, AssetManager& assets, GameState& sta
 }
 
 void InfiniteLevel::render(sf::RenderWindow& window) {
-    sf::RectangleShape bg(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::GROUND_Y + 120));
+    sf::RectangleShape bg(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT));
     bg.setFillColor(bgColor_);
     window.draw(bg);
 

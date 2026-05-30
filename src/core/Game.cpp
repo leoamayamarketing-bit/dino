@@ -54,6 +54,7 @@ void Game::init() {
 
 void Game::initSystems() {
     auto renderSys = std::make_unique<RenderSystem>(window_);
+    renderSys->setAssetManager(&assetManager_);
     renderSystem_ = renderSys.get();
     systems_.push_back(std::move(renderSys));
 
@@ -69,7 +70,7 @@ void Game::initSystems() {
     animationSystem_ = animSys.get();
     systems_.push_back(std::move(animSys));
 
-    auto playerCtrlSys = std::make_unique<PlayerControlSystem>(inputManager_, gameState_, &audioManager_);
+    auto playerCtrlSys = std::make_unique<PlayerControlSystem>(inputManager_, gameState_, &audioManager_, &assetManager_);
     playerControlSystem_ = playerCtrlSys.get();
     systems_.push_back(std::move(playerCtrlSys));
 

@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
+#include <vector>
 #include "Constants.h"
 
 class AssetManager {
@@ -25,6 +26,21 @@ public:
     // Export all generated textures to PNG files in resources/
     void exportTexturesToPNG(const std::string& outputDir = "resources");
 
+    // ─── PNG sprite loading (cross-platform) ───────────────────────────────
+    /// Load a single PNG texture from the assets/ directory.
+    /// Uses OS-appropriate path separators automatically.
+    bool loadPNGTexture(const std::string& name, const std::string& filename);
+
+    /// Load all dino animation PNGs from assets/ into individual textures.
+    /// Creates textures named "dino_frame_XX" for each loaded PNG.
+    void loadDinoAnimationPNGs();
+
+    /// Get the list of loaded dino animation frame texture names.
+    const std::vector<std::string>& getDinoFrameNames() const { return dinoFrameNames_; }
+
+    /// Returns the assets/ directory path using OS-native separators.
+    static std::string getAssetsPath();
+
 private:
     void generateDinoTextures();
     void generateEnemyTextures();
@@ -34,6 +50,9 @@ private:
 
     std::unordered_map<std::string, sf::Texture> textures_;
     std::unordered_map<std::string, sf::Font> fonts_;
+
+    // Loaded PNG frame names (for dino animation)
+    std::vector<std::string> dinoFrameNames_;
 
     sf::Texture createRectTexture(int w, int h, sf::Color color);
     sf::Texture createCircleTexture(int radius, sf::Color color);

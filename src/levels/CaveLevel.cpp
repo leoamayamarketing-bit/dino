@@ -66,7 +66,7 @@ void CaveLevel::update(float deltaTime, AssetManager& assets, GameState& state) 
 
 void CaveLevel::render(sf::RenderWindow& window) {
     // Dark cave background with gradient effect
-    sf::RectangleShape bg(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::GROUND_Y + 120));
+    sf::RectangleShape bg(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT));
     bg.setFillColor(caveColor_);
     window.draw(bg);
 

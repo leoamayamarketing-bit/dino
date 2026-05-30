@@ -1,15 +1,14 @@
 #include "../../include/core/AudioManager.h"
 #include <cmath>
-#include <algorithm>
 #include <cstdlib>
 #include <ctime>
-#include <cstdio>
 #include <cstring>
 #include <iostream>
 
 // ---------------------------------------------------------------------------
-// PlaybackInstance destructor – ensures waveOut is closed and header unprepared
+// Platform-specific: PlaybackInstance destructor (Windows only — RAII on Linux)
 // ---------------------------------------------------------------------------
+#ifdef _WIN32
 AudioManager::PlaybackInstance::~PlaybackInstance() {
     if (hWaveOut) {
         waveOutReset(hWaveOut);
@@ -18,9 +17,10 @@ AudioManager::PlaybackInstance::~PlaybackInstance() {
         waveOutClose(hWaveOut);
     }
 }
+#endif
 
 // ---------------------------------------------------------------------------
-// Construction / destruction
+// Construction / destruction (cross-platform)
 // ---------------------------------------------------------------------------
 AudioManager::AudioManager() {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
@@ -32,7 +32,7 @@ AudioManager::~AudioManager() {
 }
 
 // ---------------------------------------------------------------------------
-// Generate all procedural sound buffers
+// Generate all procedural sound buffers (cross-platform)
 // ---------------------------------------------------------------------------
 void AudioManager::init() {
     // ---------- JUMP: quick rising sine sweep ----------
@@ -203,7 +203,7 @@ void AudioManager::init() {
 }
 
 // ---------------------------------------------------------------------------
-// Play a named sound effect
+// Play a named sound effect (cross-platform)
 // ---------------------------------------------------------------------------
 void AudioManager::playSound(const std::string& name) {
     if (muted_) return;
@@ -214,8 +214,12 @@ void AudioManager::playSound(const std::string& name) {
     playRaw(it->second.samples, it->second.sampleRate);
 }
 
+// ===========================================================================
+// Platform-specific: Background music
+// ===========================================================================
+#ifdef _WIN32
 // ---------------------------------------------------------------------------
-// Background music
+// Windows: Win32 waveOut music playback
 // ---------------------------------------------------------------------------
 void AudioManager::startMusic(Constants::LevelType theme) {
     stopMusic();
@@ -240,7 +244,6 @@ void AudioManager::startMusic(Constants::LevelType theme) {
             break;
     }
 
-    // Create a looping playback via a dedicated instance
     auto inst = std::make_unique<PlaybackInstance>();
 
     WAVEFORMATEX fmt;
@@ -258,7 +261,6 @@ void AudioManager::startMusic(Constants::LevelType theme) {
         return;
     }
 
-    // Set volume for music
     if (inst->hWaveOut) {
         DWORD vol = static_cast<DWORD>(musicVolume_ * 0xFFFF / 100);
         waveOutSetVolume(inst->hWaveOut, vol | (vol << 16));
@@ -286,13 +288,63 @@ void AudioManager::startMusic(Constants::LevelType theme) {
     std::cout << "[Audio] Started music theme: " << static_cast<int>(theme) << std::endl;
 }
 
+#else
+// ---------------------------------------------------------------------------
+// Linux: SFML Audio music playback (wraps OpenAL)
+// ---------------------------------------------------------------------------
+void AudioManager::startMusic(Constants::LevelType theme) {
+    stopMusic();
+
+    currentTheme_ = theme;
+
+    float musicDuration = 16.0f; // 16-second loop
+    std::vector<int16_t> samples;
+
+    switch (theme) {
+        case Constants::LevelType::DESERT_NIGHT:
+            samples = generateMusicDesertNight(musicDuration);
+            break;
+        case Constants::LevelType::CAVE:
+            samples = generateMusicCave(musicDuration);
+            break;
+        case Constants::LevelType::VOLCANO:
+            samples = generateMusicVolcano(musicDuration);
+            break;
+        default:
+            samples = generateMusicDesertDay(musicDuration);
+            break;
+    }
+
+    auto inst = std::make_unique<PlaybackInstance>();
+    inst->isMusic = true;
+
+    // loadFromSamples copies the data internally
+    if (!inst->buffer.loadFromSamples(samples.data(), samples.size(), 1, SAMPLE_RATE)) {
+        std::cerr << "[Audio] Failed to load music buffer" << std::endl;
+        return;
+    }
+
+    inst->sound.setBuffer(inst->buffer);
+    inst->sound.setLoop(true);
+    inst->sound.setVolume(musicVolume_);
+    inst->sound.play();
+
+    musicInstance_ = std::move(inst);
+    std::cout << "[Audio] Started music theme: " << static_cast<int>(theme) << std::endl;
+}
+#endif
+
+// ---------------------------------------------------------------------------
+// stopMusic (cross-platform — unique_ptr reset handles cleanup)
+// ---------------------------------------------------------------------------
 void AudioManager::stopMusic() {
     musicInstance_.reset();
 }
 
-// ---------------------------------------------------------------------------
-// Per-frame cleanup: remove finished sounds, re-queue looping music
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Platform-specific: per-frame update
+// ===========================================================================
+#ifdef _WIN32
 void AudioManager::update() {
     // Clean up finished one-shot sounds
     activeSounds_.erase(
@@ -306,7 +358,6 @@ void AudioManager::update() {
     // Re-queue music loop if it finished
     if (musicInstance_ && musicInstance_->hWaveOut) {
         if (musicInstance_->header.dwFlags & WHDR_DONE) {
-            // Un-prepare and re-prepare to loop
             waveOutUnprepareHeader(musicInstance_->hWaveOut,
                                    &musicInstance_->header, sizeof(musicInstance_->header));
             musicInstance_->header.dwFlags = 0;
@@ -317,10 +368,24 @@ void AudioManager::update() {
         }
     }
 }
+#else
+void AudioManager::update() {
+    // Clean up finished one-shot sounds
+    activeSounds_.erase(
+        std::remove_if(activeSounds_.begin(), activeSounds_.end(),
+            [](const std::unique_ptr<PlaybackInstance>& inst) {
+                return !inst || inst->sound.getStatus() == sf::Sound::Stopped;
+            }),
+        activeSounds_.end());
 
-// ---------------------------------------------------------------------------
-// Volume control
-// ---------------------------------------------------------------------------
+    // Music looping is handled by SFML's setLoop(true) — no re-queue needed
+}
+#endif
+
+// ===========================================================================
+// Platform-specific: volume control
+// ===========================================================================
+#ifdef _WIN32
 void AudioManager::setSoundVolume(float volume) {
     soundVolume_ = std::clamp(volume, 0.0f, 100.0f);
 }
@@ -332,11 +397,26 @@ void AudioManager::setMusicVolume(float volume) {
         waveOutSetVolume(musicInstance_->hWaveOut, vol | (vol << 16));
     }
 }
+#else
+void AudioManager::setSoundVolume(float volume) {
+    soundVolume_ = std::clamp(volume, 0.0f, 100.0f);
+}
 
+void AudioManager::setMusicVolume(float volume) {
+    musicVolume_ = std::clamp(volume, 0.0f, 100.0f);
+    if (musicInstance_) {
+        musicInstance_->sound.setVolume(musicVolume_);
+    }
+}
+#endif
+
+// ===========================================================================
+// Platform-specific: mute toggle
+// ===========================================================================
+#ifdef _WIN32
 void AudioManager::setMuted(bool muted) {
     muted_ = muted;
     if (muted) {
-        // Stop all active sounds
         if (musicInstance_ && musicInstance_->hWaveOut)
             waveOutPause(musicInstance_->hWaveOut);
     } else {
@@ -344,10 +424,23 @@ void AudioManager::setMuted(bool muted) {
             waveOutRestart(musicInstance_->hWaveOut);
     }
 }
+#else
+void AudioManager::setMuted(bool muted) {
+    muted_ = muted;
+    if (musicInstance_) {
+        if (muted) {
+            musicInstance_->sound.pause();
+        } else {
+            musicInstance_->sound.play();
+        }
+    }
+}
+#endif
 
-// ---------------------------------------------------------------------------
-// playRaw – spawn a waveOut device for one-shot playback
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// Platform-specific: playRaw — actual PCM playback
+// ===========================================================================
+#ifdef _WIN32
 void AudioManager::playRaw(const std::vector<int16_t>& srcSamples, unsigned int sampleRate) {
     auto inst = std::make_unique<PlaybackInstance>();
 
@@ -365,13 +458,11 @@ void AudioManager::playRaw(const std::vector<int16_t>& srcSamples, unsigned int 
         return; // silently fail – audio is optional
     }
 
-    // Set volume
     if (inst->hWaveOut) {
         DWORD vol = static_cast<DWORD>(soundVolume_ * 0xFFFF / 100);
         waveOutSetVolume(inst->hWaveOut, vol | (vol << 16));
     }
 
-    // Copy samples into the instance so they outlive the playback
     inst->samples = srcSamples;
     inst->isMusic = false;
 
@@ -387,9 +478,25 @@ void AudioManager::playRaw(const std::vector<int16_t>& srcSamples, unsigned int 
 
     activeSounds_.push_back(std::move(inst));
 }
+#else
+void AudioManager::playRaw(const std::vector<int16_t>& srcSamples, unsigned int sampleRate) {
+    auto inst = std::make_unique<PlaybackInstance>();
+
+    // loadFromSamples copies the data internally
+    if (!inst->buffer.loadFromSamples(srcSamples.data(), srcSamples.size(), 1, sampleRate)) {
+        return; // silently fail
+    }
+
+    inst->sound.setBuffer(inst->buffer);
+    inst->sound.setVolume(soundVolume_);
+    inst->sound.play();
+
+    activeSounds_.push_back(std::move(inst));
+}
+#endif
 
 // ---------------------------------------------------------------------------
-// Sound generation helpers
+// Sound generation helpers (cross-platform)
 // ---------------------------------------------------------------------------
 AudioManager::SoundBuffer AudioManager::createSoundBuffer(const SoundParams& params) {
     SoundBuffer buf;
