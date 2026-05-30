@@ -26,6 +26,10 @@ Game::Game()
 Game::~Game() = default;
 
 void Game::init() {
+    // Load key bindings (or use defaults if no saved file)
+    keyBindings_.loadFromFile("keybindings.cfg");
+    inputManager_.setBindings(&keyBindings_);
+
     // Generate all procedural assets (textures and font)
     assetManager_.generateAllAssets();
 
@@ -39,6 +43,7 @@ void Game::init() {
     if (assetManager_.hasFont("main")) {
         sf::Font& font = assetManager_.getFont("main");
         menu_.init(font, assetManager_);
+        menu_.setBindings(&keyBindings_);
         hud_.init(font);
         gameOverScreen_.init(font);
     }
@@ -172,20 +177,30 @@ void Game::handleEvents() {
             window_.close();
         }
         if (event.type == sf::Event::KeyPressed) {
+            // Register the key press FIRST so isKeyJustPressed works immediately
+            inputManager_.onKeyPressed(event.key.code);
+
             if (gameState_.currentState == Constants::GameStateType::MENU) {
-                // Play select sound on navigation/confirm keys (not escape)
-                auto key = event.key.code;
-                if ((key == sf::Keyboard::Up || key == sf::Keyboard::Down ||
-                     key == sf::Keyboard::W || key == sf::Keyboard::S ||
-                     key == sf::Keyboard::Space || key == sf::Keyboard::Enter) &&
-                    event.key.code != sf::Keyboard::Escape) {
-                    audioManager_.playSound("select");
-                }
-                menu_.handleInput(gameState_);
-                if (menu_.shouldStart()) {
-                    gameState_.selectedDino = menu_.getSelectedDino();
-                    gameState_.currentLevel = menu_.getSelectedLevel();
-                    startGame();
+                // KEY_REMAP capture mode — intercept key presses for remapping
+                if (menu_.isWaitingForKey()) {
+                    menu_.captureKey(event.key.code);
+                } else {
+                    // Play select sound on navigation/confirm keys (not back/escape)
+                    sf::Keyboard::Key k = event.key.code;
+                    if (k != keyBindings_.menuBack &&
+                        (k == keyBindings_.menuUp || k == keyBindings_.menuUpAlt ||
+                         k == keyBindings_.menuDown || k == keyBindings_.menuDownAlt ||
+                         k == keyBindings_.menuSelect || k == keyBindings_.menuSelectAlt)) {
+                        audioManager_.playSound("select");
+                    }
+
+                    menu_.handleInput(gameState_);
+
+                    if (menu_.shouldStart()) {
+                        gameState_.selectedDino = menu_.getSelectedDino();
+                        gameState_.currentLevel = menu_.getSelectedLevel();
+                        startGame();
+                    }
                 }
             } else if (gameState_.currentState == Constants::GameStateType::GAME_OVER) {
                 gameOverScreen_.handleInput(gameState_);
@@ -196,15 +211,14 @@ void Game::handleEvents() {
                     menu_.reset();
                 }
             } else if (gameState_.currentState == Constants::GameStateType::PLAYING) {
-                if (event.key.code == sf::Keyboard::Escape) {
+                if (inputManager_.isPausePressed()) {
                     gameState_.currentState = Constants::GameStateType::PAUSED;
                 }
             } else if (gameState_.currentState == Constants::GameStateType::PAUSED) {
-                if (event.key.code == sf::Keyboard::Escape) {
+                if (inputManager_.isPausePressed()) {
                     gameState_.currentState = Constants::GameStateType::PLAYING;
                 }
             }
-            inputManager_.onKeyPressed(event.key.code);
         }
         if (event.type == sf::Event::KeyReleased) {
             inputManager_.onKeyReleased(event.key.code);

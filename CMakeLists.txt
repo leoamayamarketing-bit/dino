@@ -13,6 +13,7 @@ set(SOURCES
     src/main.cpp
     src/core/Game.cpp
     src/core/InputManager.cpp
+    src/core/KeyBindings.cpp
     src/core/AssetManager.cpp
     src/core/AudioManager.cpp
     src/systems/RenderSystem.cpp
