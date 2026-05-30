@@ -77,6 +77,45 @@ cmd_exists() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────
+# Find MSYS2 installation directory (for Git Bash / non-MSYS2 shells)
+# ──────────────────────────────────────────────────────────────────────────
+find_msys2_root() {
+    local candidates=(
+        "/c/msys64"
+        "/c/tools/msys64"
+        "/d/msys64"
+        "/e/msys64"
+        "$HOME/msys64"
+        "/msys64"
+        "C:/msys64"
+        "C:\\msys64"
+    )
+    local dir
+    for dir in "${candidates[@]}"; do
+        if [[ -f "$dir/usr/bin/pacman.exe" || -f "$dir/usr/bin/pacman" ]]; then
+            echo "$dir"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# ──────────────────────────────────────────────────────────────────────────
+# Check if running in Git Bash (which looks like MSYS2 but isn't)
+# ──────────────────────────────────────────────────────────────────────────
+is_git_bash() {
+    # Git Bash typically has MINGW in uname but no MSYSTEM,
+    # or has a very minimal set of MSYS2 packages
+    if [[ "$PLATFORM" == "windows_msys2" ]]; then
+        # Git Bash often has no pacman in PATH
+        if ! cmd_exists pacman; then
+            return 0  # true — looks like Git Bash
+        fi
+    fi
+    return 1  # false — real MSYS2 shell
+}
+
+# ──────────────────────────────────────────────────────────────────────────
 # Linux CMakeLists.txt warning (called after each Linux distro install)
 # ──────────────────────────────────────────────────────────────────────────
 linux_cmake_warning() {
@@ -301,12 +340,48 @@ install_windows_msys2() {
 
     info "Using package prefix: ${prefix}"
 
+    # If pacman is not in PATH, try to relaunch via MSYS2's shell
+    if ! cmd_exists pacman; then
+        local msys2_root
+        msys2_root="$(find_msys2_root)"
+        if [[ -n "$msys2_root" ]]; then
+            warn "pacman not found in current PATH."
+            info "Found MSYS2 installation at: $msys2_root"
+            info "Relaunching via MSYS2 bash..."
+            echo ""
+            # Re-run this script inside MSYS2's own shell.
+            # Use absolute POSIX path (not cygpath) so MSYS2 bash can resolve it
+            # regardless of the --login home directory.
+            local script_path
+            script_path="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+            info "Relaunching via: $msys2_root/usr/bin/bash --login $script_path"
+            exec "$msys2_root/usr/bin/bash" --login "$script_path" "${ORIG_ARGS[@]}"
+        else
+            error "pacman not found. MSYS2 does not appear to be installed."
+            echo ""
+            echo "  Install MSYS2 first:"
+            echo "    1. Download from: https://www.msys2.org/"
+            echo "    2. Run the installer (default path: C:\\msys64)"
+            echo "    3. Open 'MSYS2 MINGW64' from Start Menu"
+            echo "    4. Run: pacman -Syu (update packages)"
+            echo "    5. Close and re-open the terminal"
+            echo "    6. Run this script again from the MSYS2 shell"
+            echo ""
+            echo "  Or from Git Bash, run the script directly via MSYS2:"
+            echo "    C:/msys64/usr/bin/bash --login scripts/install_deps.sh"
+            echo ""
+            exit 1
+        fi
+    fi
+
     # Install via pacman (MSYS2's package manager)
+    # NOTE: Use pkgconf, not pkg-config — cmake depends on pkgconf in MSYS2
+    # and they conflict. pkgconf is a drop-in replacement for pkg-config.
     pacman -S --noconfirm \
         "${prefix}-gcc" \
         "${prefix}-cmake" \
         "${prefix}-make" \
-        "${prefix}-pkg-config" \
+        "${prefix}-pkgconf" \
         "${prefix}-freetype" \
         "${prefix}-openal" \
         "${prefix}-flac" \
@@ -513,6 +588,9 @@ post_install_check() {
 # Main entry point
 # ──────────────────────────────────────────────────────────────────────────
 main() {
+    # Save original script arguments for use inside functions
+    ORIG_ARGS=("$@")
+
     echo ""
     echo " ██████╗ ██╗███╗   ██╗ ██████╗ ██████╗ ██╗   ██╗███╗   ██╗███╗   ██╗███████╗██████╗ "
     echo " ██╔══██╗██║████╗  ██║██╔════╝ ██╔══██╗██║   ██║████╗  ██║████╗  ██║██╔════╝██╔══██╗"
@@ -532,6 +610,27 @@ main() {
             post_install_check
             ;;
         windows_msys2)
+            # Check for Git Bash early (before cd changes directory for SFML check)
+            if is_git_bash; then
+                warn "Detected Git Bash (not a native MSYS2 shell)."
+                echo ""
+                echo "  Git Bash has a limited MSYS2 environment and typically does"
+                echo "  not include pacman or the MinGW-w64 compiler toolchain."
+                echo ""
+                echo "  The script will try to detect your MSYS2 installation and"
+                echo "  relaunch automatically. If that fails, please:"
+                echo ""
+                echo "  Option A (recommended):"
+                echo "    1. Open 'MSYS2 MINGW64' from Start Menu"
+                echo "    2. Navigate to the project folder:"
+                echo "       cd /c/Users/optim/Documents/dino_game"
+                echo "    3. Run: bash scripts/install_deps.sh"
+                echo ""
+                echo "  Option B:"
+                echo "    C:/msys64/usr/bin/bash --login scripts/install_deps.sh"
+                echo ""
+            fi
+
             # For MSYS2, the script needs to be run from inside the dino_game directory
             # so the bundled SFML check works. cd to the script's directory.
             cd "$(dirname "$0")/.."

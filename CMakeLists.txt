@@ -75,6 +75,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 # Opciones de compilación
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-# Forzar enlace con libstdc++ para resolver conflictos de ABI entre versiones
-target_link_libraries(${PROJECT_NAME} PRIVATE stdc++)
+# Enlazar estáticamente las runtime de GCC (libgcc, libstdc++, libwinpthread)
+# para que el .exe no dependa de DLLs externas de MinGW al ejecutarse.
+# Esto evita errores como "cidec_cvt_utf8 no encontrado en libstdc++-6.dll"
+# cuando se ejecuta fuera del shell MSYS2.
+target_link_options(${PROJECT_NAME} PRIVATE
+    -static-libgcc
+    -static-libstdc++
+    -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive
+)
 
