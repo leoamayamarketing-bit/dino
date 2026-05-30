@@ -30,7 +30,10 @@ public:
               float speed = 100.0f, float lifetime = 1.0f,
               float size = 4.0f);
 
-    void setTexture(sf::Texture* tex) { texture_ = tex; }
+    void setTexture(sf::Texture* tex) {
+        texture_ = tex;
+        if (tex) texSize_ = static_cast<sf::Vector2f>(tex->getSize());
+    }
 
     void updateParticles(float dt);
 
@@ -38,6 +41,8 @@ private:
     std::vector<Particle> particles_;
     sf::Texture* texture_ = nullptr;
     sf::VertexArray vertexArray_;
+
+    sf::Vector2f texSize_{8.0f, 8.0f}; // cached texture size for texCoords
 };
 
 #endif

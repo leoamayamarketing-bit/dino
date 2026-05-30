@@ -12,13 +12,14 @@ struct ParallaxLayer {
     float speedMultiplier;
     float width;
     float offsetX = 0.0f;
+    float offsetY = 0.0f;  // vertical position offset
 };
 
 class ParallaxSystem : public System {
 public:
     void update(float deltaTime, std::vector<Entity*>& entities) override;
 
-    void addLayer(const sf::Texture& texture, float speedMultiplier);
+    void addLayer(const sf::Texture& texture, float speedMultiplier, float offsetY = 0.0f);
     void setScrollDirection(float x) { scrollX_ = x; }
     void render(sf::RenderWindow& window);
     void clear();

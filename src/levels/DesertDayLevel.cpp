@@ -10,15 +10,16 @@
 #include <cstdlib>
 
 void DesertDayLevel::init(AssetManager& assets, GameState& state) {
-    spawnInterval_ = 2.0f;
+    spawnInterval_ = 2.5f;
     spawnTimer_ = 0.0f;
+    minSpawnInterval_ = 1.5f;
 
     // Setup parallax layers
     if (assets.hasTexture("cloud")) {
-        parallax_.addLayer(assets.getTexture("cloud"), 0.2f);
+        parallax_.addLayer(assets.getTexture("cloud"), 0.2f, 30.0f);
     }
     if (assets.hasTexture("ground")) {
-        parallax_.addLayer(assets.getTexture("ground"), 1.0f);
+        parallax_.addLayer(assets.getTexture("ground"), 1.0f, Constants::GROUND_Y);
     }
     parallax_.setScrollDirection(1.0f);
 
@@ -48,7 +49,7 @@ void DesertDayLevel::update(float deltaTime, AssetManager& assets, GameState& st
     if (spawnTimer_ >= spawnInterval_) {
         spawnTimer_ = 0.0f;
         spawnObstacles(state, assets);
-        spawnInterval_ = std::max(1.0f, spawnInterval_ - 0.05f);
+        spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - 0.04f);
     }
 
     // Clean up offscreen entities
@@ -61,7 +62,13 @@ void DesertDayLevel::render(sf::RenderWindow& window) {
     sky.setFillColor(skyColor_);
     window.draw(sky);
 
-    // Parallax layers
+    // Draw ground fill below GROUND_Y
+    sf::RectangleShape groundFill(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT - Constants::GROUND_Y));
+    groundFill.setFillColor(sf::Color(100, 80, 50));  // dirt color below ground
+    groundFill.setPosition(0, Constants::GROUND_Y);
+    window.draw(groundFill);
+
+    // Parallax layers (ground texture at GROUND_Y, clouds above)
     parallax_.render(window);
 
     // Particles
@@ -69,7 +76,7 @@ void DesertDayLevel::render(sf::RenderWindow& window) {
 }
 
 void DesertDayLevel::spawnObstacles(GameState& state, AssetManager& assets) {
-    float startX = Constants::WINDOW_WIDTH + 100;
+    float startX = Constants::WINDOW_WIDTH + 100.0f + static_cast<float>(std::rand() % 200);
     int roll = std::rand() % 100;
 
     if (roll < 40) {
@@ -79,22 +86,22 @@ void DesertDayLevel::spawnObstacles(GameState& state, AssetManager& assets) {
         auto entity = EnemyFactory::createEnemy(Constants::EnemyType::LARGE_CACTUS, assets, startX);
         state.entities.push_back(std::move(entity));
     } else if (roll < 80) {
-        auto entity = EnemyFactory::createEnemy(Constants::EnemyType::PTERODACTYL, assets, startX + 50);
+        auto entity = EnemyFactory::createEnemy(Constants::EnemyType::PTERODACTYL, assets, startX + 100);
         state.entities.push_back(std::move(entity));
     } else {
         // Coin group
         for (int i = 0; i < 3; i++) {
-            auto coin = ObstacleFactory::createCoin(assets, startX + i * 40,
-                Constants::GROUND_Y - 80 - static_cast<float>(std::rand() % 60));
+            auto coin = ObstacleFactory::createCoin(assets, startX + i * 50,
+                Constants::GROUND_Y - 100 - static_cast<float>(std::rand() % 80));
             state.entities.push_back(std::move(coin));
         }
     }
 
-    // Random powerup
-    if (std::rand() % 100 < 10) {
+    // Random powerup (less frequent)
+    if (std::rand() % 100 < 8) {
         auto pu = ObstacleFactory::createPowerUp(assets,
             static_cast<Constants::PowerUpType>(std::rand() % 5),
-            startX + 200, Constants::GROUND_Y - 60);
+            startX + 250, Constants::GROUND_Y - 100);
         state.entities.push_back(std::move(pu));
     }
 }

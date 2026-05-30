@@ -26,6 +26,7 @@ public:
 protected:
     float spawnTimer_ = 0.0f;
     float spawnInterval_ = 2.0f;
+    float minSpawnInterval_ = 1.2f;
     float backgroundY_ = 600.0f;
 
     void spawnGround(Entity* player, GameState& state, AssetManager& assets);

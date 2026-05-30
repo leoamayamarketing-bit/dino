@@ -14,6 +14,11 @@ struct SpriteComponent : public Component {
     int zOrder = 0;
     bool visible = true;
 
+    /// Desired origin point for the sprite.
+    /// Re-applied after every texture switch (since setTexture() resets origin).
+    /// Default (0,0) = top-left, compatible with all existing entities.
+    sf::Vector2f origin{0.0f, 0.0f};
+
     explicit SpriteComponent(const std::string& texName = "")
         : textureName(texName) {}
 
@@ -21,11 +26,17 @@ struct SpriteComponent : public Component {
         texture = &tex;
         sprite.setTexture(tex);
         sprite.setTextureRect(sf::IntRect(0, 0, tex.getSize().x, tex.getSize().y));
+        sprite.setOrigin(origin);
     }
 
     void setColor(const sf::Color& c) {
         color = c;
         sprite.setColor(c);
+    }
+
+    /// Apply origin to the underlying sf::Sprite. Call after modifying origin.
+    void applyOrigin() {
+        sprite.setOrigin(origin);
     }
 };
 

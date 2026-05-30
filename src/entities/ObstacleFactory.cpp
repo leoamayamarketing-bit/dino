@@ -94,18 +94,18 @@ std::vector<std::unique_ptr<Entity>> ObstacleFactory::generateObstaclePattern(
         
         if (roll < 30) {
             pattern.push_back(createSmallCactus(assets, x));
-            x += 40 + (std::rand() % 60);
+            x += 200 + (std::rand() % 150);  // ~200-350px between obstacles
         } else if (roll < 50) {
             pattern.push_back(createLargeCactus(assets, x));
-            x += 50 + (std::rand() % 70);
+            x += 250 + (std::rand() % 150);
         } else if (roll < 65) {
-            pattern.push_back(createCoin(assets, x, Constants::GROUND_Y - 60 - (std::rand() % 80)));
-            x += 30;
+            pattern.push_back(createCoin(assets, x, Constants::GROUND_Y - 80 - (std::rand() % 80)));
+            x += 80;
         } else if (level == Constants::LevelType::INFINITE && roll < 75) {
             pattern.push_back(createRock(assets, x));
-            x += 50 + (std::rand() % 40);
+            x += 200 + (std::rand() % 100);
         } else {
-            x += 80 + (std::rand() % 100);
+            x += 200 + (std::rand() % 200);  // gap with no obstacles
         }
     }
 
@@ -113,7 +113,7 @@ std::vector<std::unique_ptr<Entity>> ObstacleFactory::generateObstaclePattern(
 }
 
 void ObstacleFactory::spawnRandomObstacle(AssetManager& assets, GameState& state, Constants::LevelType level) {
-    float startX = Constants::WINDOW_WIDTH + 100;
+    float startX = Constants::WINDOW_WIDTH + 100.0f + static_cast<float>(std::rand() % 200);
     int roll = std::rand() % 100;
 
     std::unique_ptr<Entity> entity;
@@ -152,7 +152,7 @@ void ObstacleFactory::spawnRandomPowerUp(AssetManager& assets, GameState& state)
 
     Constants::PowerUpType type = types[std::rand() % 5];
     float x = Constants::WINDOW_WIDTH + 50;
-    float y = Constants::GROUND_Y - 80 - (std::rand() % 60);
+    float y = Constants::GROUND_Y - 100 - (std::rand() % 60);
 
     auto pu = createPowerUp(assets, type, x, y);
     state.entities.push_back(std::move(pu));

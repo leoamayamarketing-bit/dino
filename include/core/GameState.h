@@ -48,6 +48,10 @@ struct GameState {
     float levelProgress = 0.0f;
     float levelLength = 5000.0f;
 
+    // Screen shake
+    float screenShakeIntensity = 0.0f;
+    float screenShakeTimer = 0.0f;
+
     // Timer
     float gameTime = 0.0f;
     float levelTransitionTimer = 0.0f;
@@ -68,6 +72,8 @@ struct GameState {
         doublePointsTimer = 0.0f;
         speedBoostTimer = 0.0f;
         gameTime = 0.0f;
+        screenShakeIntensity = 0.0f;
+        screenShakeTimer = 0.0f;
         levelProgress = 0.0f;
         entities.clear();
         player = nullptr;

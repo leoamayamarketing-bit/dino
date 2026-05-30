@@ -35,7 +35,8 @@ std::unique_ptr<Entity> PlayerFactory::createPlayer(
     auto setOriginBottom = [](SpriteComponent& s) {
         if (s.sprite.getTexture()) {
             sf::Vector2u texSize = s.sprite.getTexture()->getSize();
-            s.sprite.setOrigin(texSize.x / 2.0f, static_cast<float>(texSize.y));
+            s.origin = sf::Vector2f(texSize.x / 2.0f, static_cast<float>(texSize.y));
+            s.sprite.setOrigin(s.origin);
         }
     };
 
@@ -157,9 +158,10 @@ std::unique_ptr<Entity> PlayerFactory::createPlayer(
     // CollisionSystem updates bounds.left/top from transform position + localOffset.
     // With origin at bottom-center (startX, startY = GROUND_Y), the collision
     // box is offset upward to cover the dino body above the feet.
+    // Dino texture is ~244x243 px; collision covers the main body area.
     auto& coll = entity->addComponent<CollisionComponent>(
-        sf::FloatRect(0, 0, 70, 55), "player");
-    coll.localOffset = sf::Vector2f(-35.0f, -65.0f);
+        sf::FloatRect(0, 0, 130, 200), "player");
+    coll.localOffset = sf::Vector2f(-65.0f, -200.0f);
     coll.isTrigger = false;
     coll.isStatic = false;
 

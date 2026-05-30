@@ -8,18 +8,19 @@
 #include <cstdlib>
 
 void InfiniteLevel::init(AssetManager& assets, GameState& state) {
-    spawnInterval_ = 1.2f;
+    spawnInterval_ = 1.8f;
     spawnTimer_ = 0.0f;
     difficulty_ = 1.0f;
+    minSpawnInterval_ = 1.0f;
     themeChangeTimer_ = 0.0f;
     currentTheme_ = Constants::LevelType::DESERT_DAY;
     bgColor_ = sf::Color(135, 206, 235);
 
     if (assets.hasTexture("ground")) {
-        parallax_.addLayer(assets.getTexture("ground"), 1.0f);
+        parallax_.addLayer(assets.getTexture("ground"), 1.0f, Constants::GROUND_Y);
     }
     if (assets.hasTexture("cloud")) {
-        parallax_.addLayer(assets.getTexture("cloud"), 0.3f);
+        parallax_.addLayer(assets.getTexture("cloud"), 0.3f, 30.0f);
     }
     parallax_.setScrollDirection(1.0f);
 
@@ -45,7 +46,7 @@ void InfiniteLevel::update(float deltaTime, AssetManager& assets, GameState& sta
     if (spawnTimer_ >= spawnInterval_) {
         spawnTimer_ = 0.0f;
         spawnObstacles(state, assets);
-        spawnInterval_ = std::max(0.6f, 1.2f - difficulty_ * 0.05f);
+        spawnInterval_ = std::max(minSpawnInterval_, 1.8f - difficulty_ * 0.04f);
     }
 
     cleanupOffscreen(state);
@@ -55,6 +56,12 @@ void InfiniteLevel::render(sf::RenderWindow& window) {
     sf::RectangleShape bg(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT));
     bg.setFillColor(bgColor_);
     window.draw(bg);
+
+    // Draw ground fill below GROUND_Y
+    sf::RectangleShape groundFill(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT - Constants::GROUND_Y));
+    groundFill.setFillColor(sf::Color(100, 80, 50));
+    groundFill.setPosition(0, Constants::GROUND_Y);
+    window.draw(groundFill);
 
     parallax_.render(window);
 }

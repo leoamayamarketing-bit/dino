@@ -38,6 +38,12 @@ void RenderSystem::update(float, std::vector<Entity*>& entities) {
                     sprite->sprite.setTextureRect(sf::IntRect(0, 0,
                         tex.getSize().x, tex.getSize().y));
                 }
+                // Restore sprite origin (setTexture() resets it to (0,0))
+                sprite->sprite.setOrigin(sprite->origin);
+            } else if (anim->currentFrames && !anim->currentFrames->empty()) {
+                // For non-separate-texture animations, also restore origin
+                // since setTextureRect may have been called
+                sprite->sprite.setOrigin(sprite->origin);
             }
 
             if (anim->flipped) {

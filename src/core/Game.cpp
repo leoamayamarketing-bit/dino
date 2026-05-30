@@ -1,7 +1,5 @@
 #include "../../include/core/Game.h"
 #include "../../include/entities/PlayerFactory.h"
-#include "../../include/entities/EnemyFactory.h"
-#include "../../include/entities/ObstacleFactory.h"
 #include "../../include/components/TransformComponent.h"
 #include "../../include/components/SpriteComponent.h"
 #include "../../include/components/PhysicsComponent.h"
@@ -85,6 +83,11 @@ void Game::initSystems() {
     auto powerUpSys = std::make_unique<PowerUpSystem>(gameState_);
     powerUpSystem_ = powerUpSys.get();
     systems_.push_back(std::move(powerUpSys));
+
+    // Initialize particle system with particle texture
+    if (assetManager_.hasTexture("particle")) {
+        particleSystem_.setTexture(&assetManager_.getTexture("particle"));
+    }
 }
 
 void Game::initCollisionRules() {
@@ -94,10 +97,45 @@ void Game::initCollisionRules() {
             auto* playerComp = player->getComponent<PlayerComponent>();
             if (health && !health->invulnerable) {
                 if (playerComp && playerComp->hasShield) {
+                    // Shield breaks: destroy the enemy with explosion particles!
                     playerComp->hasShield = false;
                     gameState_.shieldActive = false;
                     gameState_.shieldTimer = 0.0f;
                     audioManager_.playSound("shield");
+
+                    auto* enemyTrans = enemy->getComponent<TransformComponent>();
+                    if (enemyTrans) {
+                        // Fire/explosion burst
+                        particleSystem_.emit(
+                            enemyTrans->position,
+                            15,                       // 15 fire particles
+                            sf::Color(255, 100, 0),   // orange fire
+                            200.0f,                   // speed
+                            0.8f,                     // lifetime
+                            6.0f                      // size
+                        );
+                        // Bright yellow sparks
+                        particleSystem_.emit(
+                            enemyTrans->position,
+                            8,
+                            sf::Color(255, 255, 100), // yellow sparks
+                            150.0f,
+                            0.5f,
+                            4.0f
+                        );
+                        // Gray debris fragments
+                        particleSystem_.emit(
+                            enemyTrans->position,
+                            6,
+                            sf::Color(160, 140, 120), // gray/brown debris
+                            100.0f,
+                            0.6f,
+                            3.0f
+                        );
+                    }
+
+                    // Destroy the enemy
+                    enemy->setActive(false);
                     return;
                 }
                 health->takeDamage(1);
@@ -119,6 +157,28 @@ void Game::initCollisionRules() {
                 gameState_.score += points;
                 gameState_.coins++;
                 audioManager_.playSound("coin");
+
+                // Emit golden particle burst at coin position
+                auto* trans = coin->getComponent<TransformComponent>();
+                if (trans) {
+                    particleSystem_.emit(
+                        trans->position,
+                        12,                    // 12 particles
+                        sf::Color(255, 215, 0), // gold
+                        120.0f,                 // speed
+                        0.6f,                   // lifetime
+                        5.0f                    // size
+                    );
+                    // Second burst with lighter/golden sparkles
+                    particleSystem_.emit(
+                        trans->position,
+                        6,
+                        sf::Color(255, 255, 200), // light gold
+                        80.0f,
+                        0.4f,
+                        3.0f
+                    );
+                }
             }
         });
 
@@ -249,8 +309,9 @@ void Game::update(float deltaTime) {
                 }
             }
 
-            // Update distance
+            // Update distance and game time
             gameState_.distance += gameState_.currentSpeed * deltaTime * 0.1f;
+            gameState_.gameTime += deltaTime;
 
             // Update level
             levelManager_.update(deltaTime, assetManager_, gameState_);
@@ -268,32 +329,6 @@ void Game::update(float deltaTime) {
                 system->update(deltaTime, activeEntities);
             }
 
-            // Spawn new obstacles periodically
-            static float obstacleTimer = 0.0f;
-            obstacleTimer += deltaTime;
-            if (obstacleTimer > std::max(0.8f, 2.0f - gameState_.distance / 500.0f)) {
-                obstacleTimer = 0.0f;
-                ObstacleFactory::spawnRandomObstacle(assetManager_, gameState_, gameState_.currentLevel);
-            }
-
-            // Spawn coins occasionally
-            static float coinTimer = 0.0f;
-            coinTimer += deltaTime;
-            if (coinTimer > 3.0f) {
-                coinTimer = 0.0f;
-                float coinY = Constants::GROUND_Y - 50 - static_cast<float>(std::rand() % 100);
-                ObstacleFactory::spawnCoinCluster(assetManager_, gameState_,
-                    Constants::WINDOW_WIDTH + 50, coinY, 5);
-            }
-
-            // Spawn powerups rarely
-            static float powerUpTimer = 0.0f;
-            powerUpTimer += deltaTime;
-            if (powerUpTimer > 8.0f + static_cast<float>(std::rand() % 10)) {
-                powerUpTimer = 0.0f;
-                ObstacleFactory::spawnRandomPowerUp(assetManager_, gameState_);
-            }
-
             // Cleanup dead entities (process after iteration)
             gameState_.entities.erase(
                 std::remove_if(gameState_.entities.begin(), gameState_.entities.end(),
@@ -302,8 +337,11 @@ void Game::update(float deltaTime) {
                     }),
                 gameState_.entities.end());
 
-            // Update HUD
-            hud_.update(gameState_);
+            // Update particle system
+            particleSystem_.updateParticles(deltaTime);
+
+            // Update HUD with deltaTime for popup/combo animations
+            hud_.update(gameState_, deltaTime);
 
             // Check game over condition
             if (gameState_.lives <= 0) {
@@ -352,6 +390,9 @@ void Game::render() {
                 }
                 renderSystem_->update(0.0f, activeEntities);
             }
+
+            // Render particles (on top of entities)
+            particleSystem_.render(window_);
 
             // Render HUD
             hud_.render(window_);
@@ -413,6 +454,7 @@ void Game::startGame() {
     // Reset game state
     gameState_.score = 0.0f;
     gameState_.distance = 0.0f;
+    gameState_.gameTime = 0.0f;
     gameState_.currentSpeed = Constants::BASE_SPEED;
     gameState_.speedTimer = 0.0f;
     gameState_.coins = 0;

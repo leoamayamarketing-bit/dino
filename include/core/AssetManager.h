@@ -38,6 +38,10 @@ public:
     /// Get the list of loaded dino animation frame texture names.
     const std::vector<std::string>& getDinoFrameNames() const { return dinoFrameNames_; }
 
+    /// Load gameplay PNG assets (ground, cloud, cactus, bird) with alpha transparency.
+    /// Replaces procedural textures with PNG-loaded ones.
+    void loadGameplayPNGAssets();
+
     /// Returns the assets/ directory path using OS-native separators.
     static std::string getAssetsPath();
 

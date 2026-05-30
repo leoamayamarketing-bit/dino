@@ -11,11 +11,12 @@
 #include <cstdlib>
 
 void CaveLevel::init(AssetManager& assets, GameState& state) {
-    spawnInterval_ = 1.6f;
+    spawnInterval_ = 2.2f;
     spawnTimer_ = 0.0f;
+    minSpawnInterval_ = 1.5f;
 
     if (assets.hasTexture("ground")) {
-        parallax_.addLayer(assets.getTexture("ground"), 1.0f);
+        parallax_.addLayer(assets.getTexture("ground"), 1.0f, Constants::GROUND_Y);
     }
     parallax_.setScrollDirection(1.0f);
 
@@ -57,7 +58,7 @@ void CaveLevel::update(float deltaTime, AssetManager& assets, GameState& state) 
     if (spawnTimer_ >= spawnInterval_) {
         spawnTimer_ = 0.0f;
         spawnObstacles(state, assets);
-        spawnInterval_ = std::max(1.2f, spawnInterval_ - 0.05f);
+        spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - 0.04f);
     }
 
     cleanupOffscreen(state);
@@ -84,18 +85,18 @@ void CaveLevel::render(sf::RenderWindow& window) {
         window.draw(stalactite);
     }
 
-    // Ground
-    sf::RectangleShape ground(sf::Vector2f(Constants::WINDOW_WIDTH, 20));
-    ground.setFillColor(groundColor_);
-    ground.setPosition(0, Constants::GROUND_Y);
-    window.draw(ground);
+    // Ground fill below GROUND_Y
+    sf::RectangleShape groundFill(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT - Constants::GROUND_Y));
+    groundFill.setFillColor(sf::Color(20, 15, 10));
+    groundFill.setPosition(0, Constants::GROUND_Y);
+    window.draw(groundFill);
 
     parallax_.render(window);
     dripParticles_.render(window);
 }
 
 void CaveLevel::spawnObstacles(GameState& state, AssetManager& assets) {
-    float startX = Constants::WINDOW_WIDTH + 100;
+    float startX = Constants::WINDOW_WIDTH + 100.0f + static_cast<float>(std::rand() % 200);
     int roll = std::rand() % 100;
 
     if (roll < 30) {
@@ -105,15 +106,15 @@ void CaveLevel::spawnObstacles(GameState& state, AssetManager& assets) {
         auto e = EnemyFactory::createEnemy(Constants::EnemyType::GROUND_ENEMY, assets, startX);
         state.entities.push_back(std::move(e));
     } else if (roll < 65) {
-        auto e = EnemyFactory::createEnemy(Constants::EnemyType::PTERODACTYL, assets, startX);
+        auto e = EnemyFactory::createEnemy(Constants::EnemyType::PTERODACTYL, assets, startX + 100);
         state.entities.push_back(std::move(e));
     } else if (roll < 80) {
-        auto rock = ObstacleFactory::createRock(assets, startX);
+        auto rock = ObstacleFactory::createRock(assets, startX + 50);
         state.entities.push_back(std::move(rock));
     } else {
         for (int i = 0; i < 3; i++) {
-            auto coin = ObstacleFactory::createCoin(assets, startX + i * 40,
-                Constants::GROUND_Y - 80 - (std::rand() % 60));
+            auto coin = ObstacleFactory::createCoin(assets, startX + i * 50,
+                Constants::GROUND_Y - 120 - (std::rand() % 80));
             state.entities.push_back(std::move(coin));
         }
     }
@@ -121,7 +122,7 @@ void CaveLevel::spawnObstacles(GameState& state, AssetManager& assets) {
     if (std::rand() % 100 < 8) {
         auto pu = ObstacleFactory::createPowerUp(assets,
             static_cast<Constants::PowerUpType>(std::rand() % 5),
-            startX + 200, Constants::GROUND_Y - 60);
+            startX + 250, Constants::GROUND_Y - 100);
         state.entities.push_back(std::move(pu));
     }
 }

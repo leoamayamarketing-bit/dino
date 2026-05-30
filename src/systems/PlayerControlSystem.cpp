@@ -198,6 +198,8 @@ void PlayerControlSystem::update(float deltaTime, std::vector<Entity*>& entities
                             sprite->sprite.setTextureRect(sf::IntRect(0, 0,
                                 static_cast<int>(tex.getSize().x),
                                 static_cast<int>(tex.getSize().y)));
+                            // Restore origin (setTexture() resets it)
+                            sprite->sprite.setOrigin(sprite->origin);
                         }
                     }
                 }
@@ -218,6 +220,8 @@ void PlayerControlSystem::update(float deltaTime, std::vector<Entity*>& entities
                             sprite->sprite.setTextureRect(sf::IntRect(0, 0,
                                 static_cast<int>(tex.getSize().x),
                                 static_cast<int>(tex.getSize().y)));
+                            // Restore origin (setTexture() resets it)
+                            sprite->sprite.setOrigin(sprite->origin);
                         }
                     }
                 } else if (anim->hasAnimation("run")) {

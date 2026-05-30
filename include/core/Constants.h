@@ -12,15 +12,15 @@ namespace Constants {
 
     // Physics
     constexpr float GRAVITY = 1800.0f;
-    constexpr float GROUND_Y = 420.0f;
+    constexpr float GROUND_Y = 480.0f;
     constexpr float BASE_SPEED = 400.0f;
     constexpr float MAX_SPEED = 900.0f;
     constexpr float SPEED_INCREMENT = 2.0f;
     constexpr float SPEED_INTERVAL = 5.0f;
 
     // Player
-    constexpr float JUMP_VELOCITY = -650.0f;
-    constexpr float DOUBLE_JUMP_VELOCITY = -550.0f;
+    constexpr float JUMP_VELOCITY = -620.0f;
+    constexpr float DOUBLE_JUMP_VELOCITY = -520.0f;
     constexpr float DASH_SPEED_MULTIPLIER = 2.0f;
     constexpr float DASH_DURATION = 0.3f;
     constexpr float DASH_COOLDOWN = 1.0f;
@@ -30,7 +30,7 @@ namespace Constants {
     constexpr float COYOTE_TIME = 0.08f;           // ms after leaving ground you can still jump
     constexpr float JUMP_BUFFER_TIME = 0.1f;       // ms before landing you can buffer a jump
     constexpr float JUMP_CUT_MULTIPLIER = 0.4f;    // velocity multiplier when releasing jump early
-    constexpr float GRAVITY_UP_FACTOR = 0.55f;     // gravity multiplier while ascending (floatier)
+    constexpr float GRAVITY_UP_FACTOR = 0.65f;     // gravity multiplier while ascending (less floaty, snappier)
     constexpr float GRAVITY_DOWN_FACTOR = 1.2f;    // gravity multiplier while falling (snappier)
     constexpr float LANDING_SQUASH_DURATION = 0.12f;
     constexpr float LANDING_SQUASH_X = 1.2f;       // max horizontal stretch on landing

@@ -4,7 +4,7 @@
 #include <cstdlib>
 
 ParticleSystem::ParticleSystem() {
-    vertexArray_.setPrimitiveType(sf::Points);
+    vertexArray_.setPrimitiveType(sf::Quads);
 }
 
 void ParticleSystem::update(float, std::vector<Entity*>&) {
@@ -15,14 +15,35 @@ void ParticleSystem::render(sf::RenderWindow& window) {
     if (particles_.empty()) return;
 
     vertexArray_.clear();
+
     for (const auto& p : particles_) {
         if (!p.active) continue;
+
         float alpha = (p.lifetime / p.maxLifetime) * 255.0f;
         sf::Color c = p.color;
         c.a = static_cast<sf::Uint8>(alpha);
 
-        sf::Vertex v(p.position, c);
-        vertexArray_.append(v);
+        float hs = p.size * 0.5f; // half-size for quad offsets
+        float x = p.position.x;
+        float y = p.position.y;
+
+        // Four vertices forming a quad of size x size centered on position
+        // With texture coordinates mapping to the full texture
+        sf::Vector2f texSize = texSize_;
+
+        // Top-left
+        sf::Vertex v0(sf::Vector2f(x - hs, y - hs), c, sf::Vector2f(0.0f, 0.0f));
+        // Top-right
+        sf::Vertex v1(sf::Vector2f(x + hs, y - hs), c, sf::Vector2f(texSize.x, 0.0f));
+        // Bottom-right
+        sf::Vertex v2(sf::Vector2f(x + hs, y + hs), c, sf::Vector2f(texSize.x, texSize.y));
+        // Bottom-left
+        sf::Vertex v3(sf::Vector2f(x - hs, y + hs), c, sf::Vector2f(0.0f, texSize.y));
+
+        vertexArray_.append(v0);
+        vertexArray_.append(v1);
+        vertexArray_.append(v2);
+        vertexArray_.append(v3);
     }
 
     if (texture_) {

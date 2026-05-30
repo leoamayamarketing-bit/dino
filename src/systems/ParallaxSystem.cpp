@@ -13,22 +13,23 @@ void ParallaxSystem::update(float deltaTime, std::vector<Entity*>&) {
     }
 }
 
-void ParallaxSystem::addLayer(const sf::Texture& texture, float speedMultiplier) {
+void ParallaxSystem::addLayer(const sf::Texture& texture, float speedMultiplier, float offsetY) {
     ParallaxLayer layer;
     layer.sprite.setTexture(texture);
     layer.speedMultiplier = speedMultiplier;
     layer.width = static_cast<float>(texture.getSize().x);
     layer.offsetX = 0.0f;
+    layer.offsetY = offsetY;
     layers_.push_back(layer);
 }
 
 void ParallaxSystem::render(sf::RenderWindow& window) {
     for (auto& layer : layers_) {
         // Draw two copies for seamless scrolling
-        layer.sprite.setPosition(-layer.offsetX, 0);
+        layer.sprite.setPosition(-layer.offsetX, layer.offsetY);
         window.draw(layer.sprite);
 
-        layer.sprite.setPosition(-layer.offsetX + layer.width, 0);
+        layer.sprite.setPosition(-layer.offsetX + layer.width, layer.offsetY);
         window.draw(layer.sprite);
     }
 }

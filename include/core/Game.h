@@ -57,6 +57,7 @@ private:
     EnemyAISystem* enemyAISystem_ = nullptr;
     CoinSystem* coinSystem_ = nullptr;
     PowerUpSystem* powerUpSystem_ = nullptr;
+    ParticleSystem particleSystem_;
 
     // Level management
     LevelManager levelManager_;
@@ -65,9 +66,6 @@ private:
     Menu menu_;
     HUD hud_;
     GameOverScreen gameOverScreen_;
-
-    // Timers
-    float spawnTimer_ = 0.0f;
 
     void init();
     void initSystems();
@@ -83,7 +81,18 @@ private:
     void spawnInitialEntities();
     void updateSpeed(float deltaTime);
     void updatePowerUps(float deltaTime);
+    void updateScreenShake(float deltaTime);
+    void applyScreenShake(sf::View& view);
     void checkGameOver();
+
+    // Particle helper methods
+    void emitCoinParticles(sf::Vector2f position);
+    void emitExplosionParticles(sf::Vector2f position);
+    void emitPowerUpParticles(sf::Vector2f position, Constants::PowerUpType type);
+    void emitComboParticles(sf::Vector2f position, int comboCount);
+
+    // Combo tracking for milestones
+    int lastComboMilestone_ = 0;
 };
 
 #endif

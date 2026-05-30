@@ -9,14 +9,15 @@
 #include <cstdlib>
 
 void DesertNightLevel::init(AssetManager& assets, GameState& state) {
-    spawnInterval_ = 1.8f;
+    spawnInterval_ = 2.5f;
     spawnTimer_ = 0.0f;
+    minSpawnInterval_ = 1.5f;
 
     if (assets.hasTexture("cloud")) {
-        parallax_.addLayer(assets.getTexture("cloud"), 0.2f);
+        parallax_.addLayer(assets.getTexture("cloud"), 0.2f, 30.0f);
     }
     if (assets.hasTexture("ground")) {
-        parallax_.addLayer(assets.getTexture("ground"), 1.0f);
+        parallax_.addLayer(assets.getTexture("ground"), 1.0f, Constants::GROUND_Y);
     }
     parallax_.setScrollDirection(1.0f);
     spawnObstacles(state, assets);
@@ -41,7 +42,7 @@ void DesertNightLevel::update(float deltaTime, AssetManager& assets, GameState& 
     if (spawnTimer_ >= spawnInterval_) {
         spawnTimer_ = 0.0f;
         spawnObstacles(state, assets);
-        spawnInterval_ = std::max(1.0f, spawnInterval_ - 0.05f);
+        spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - 0.04f);
     }
 
     cleanupOffscreen(state);
@@ -71,12 +72,18 @@ void DesertNightLevel::render(sf::RenderWindow& window) {
         window.draw(star);
     }
 
+    // Draw ground fill below GROUND_Y
+    sf::RectangleShape groundFill(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT - Constants::GROUND_Y));
+    groundFill.setFillColor(sf::Color(40, 30, 20));
+    groundFill.setPosition(0, Constants::GROUND_Y);
+    window.draw(groundFill);
+
     parallax_.render(window);
     fireflies_.render(window);
 }
 
 void DesertNightLevel::spawnObstacles(GameState& state, AssetManager& assets) {
-    float startX = Constants::WINDOW_WIDTH + 100;
+    float startX = Constants::WINDOW_WIDTH + 100.0f + static_cast<float>(std::rand() % 200);
     int roll = std::rand() % 100;
 
     if (roll < 35) {
@@ -86,13 +93,25 @@ void DesertNightLevel::spawnObstacles(GameState& state, AssetManager& assets) {
         auto e = EnemyFactory::createEnemy(Constants::EnemyType::LARGE_CACTUS, assets, startX);
         state.entities.push_back(std::move(e));
     } else if (roll < 75) {
-        auto e = EnemyFactory::createEnemy(Constants::EnemyType::PTERODACTYL, assets, startX);
+        auto e = EnemyFactory::createEnemy(Constants::EnemyType::PTERODACTYL, assets, startX + 100);
         state.entities.push_back(std::move(e));
     } else if (roll < 88) {
+        // Coin cluster
+        for (int i = 0; i < 3; i++) {
+            auto coin = ObstacleFactory::createCoin(assets, startX + i * 50,
+                Constants::GROUND_Y - 120 - (std::rand() % 80));
+            state.entities.push_back(std::move(coin));
+        }
+    } else {
         auto e = EnemyFactory::createEnemy(Constants::EnemyType::ROLLING_ROCK, assets, startX);
         state.entities.push_back(std::move(e));
-    } else {
-        auto e = EnemyFactory::createEnemy(Constants::EnemyType::GROUND_ENEMY, assets, startX);
-        state.entities.push_back(std::move(e));
+    }
+
+    // Powerup chance (less frequent)
+    if (std::rand() % 100 < 8) {
+        auto pu = ObstacleFactory::createPowerUp(assets,
+            static_cast<Constants::PowerUpType>(std::rand() % 5),
+            startX + 250, Constants::GROUND_Y - 100);
+        state.entities.push_back(std::move(pu));
     }
 }

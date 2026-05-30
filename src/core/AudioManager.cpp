@@ -184,6 +184,21 @@ void AudioManager::init() {
         buffers_["shield"] = createSoundBuffer(p);
     }
 
+    // ---------- EXPLOSION: deep boom with crackle ----------
+    {
+        SoundParams p;
+        p.duration = 0.45f;
+        p.startFreq = 200.0f;
+        p.endFreq = 30.0f;
+        p.amplitude = 0.7f;
+        p.noiseAmount = 0.6f;
+        p.attack = 0.002f;
+        p.decay = 0.1f;
+        p.sustainLevel = 0.5f;
+        p.release = 0.2f;
+        buffers_["explosion"] = createSoundBuffer(p);
+    }
+
     // ---------- LAND: soft thud ----------
     {
         SoundParams p;
@@ -197,6 +212,34 @@ void AudioManager::init() {
         p.sustainLevel = 0.4f;
         p.release = 0.04f;
         buffers_["land"] = createSoundBuffer(p);
+    }
+
+    // ---------- COMBO: ascending chime ----------
+    {
+        float noteDur = 0.04f;
+        float gap = 0.015f;
+        float totalDur = (noteDur + gap) * 5 + 0.1f;
+        std::vector<int16_t> samples(static_cast<size_t>(totalDur * SAMPLE_RATE), 0);
+        auto addNote = [&](float freq, float startTime, float dur, float amp) {
+            size_t start = static_cast<size_t>(startTime * SAMPLE_RATE);
+            size_t end   = static_cast<size_t>((startTime + dur) * SAMPLE_RATE);
+            for (size_t i = start; i < end && i < samples.size(); ++i) {
+                float t = static_cast<float>(i) / SAMPLE_RATE;
+                float localT = t - startTime;
+                float env = std::min(1.0f, localT / 0.003f);
+                env *= std::max(0.0f, 1.0f - (localT - dur + 0.02f) / 0.02f);
+                float sample = std::sin(2.0f * 3.14159f * freq * t);
+                sample += std::sin(2.0f * 3.14159f * freq * 2.0f * t) * 0.3f;
+                samples[i] += static_cast<int16_t>(sample * amp * env * 30000);
+            }
+        };
+        float notes[] = {1047.0f, 1319.0f, 1568.0f, 2093.0f, 2637.0f}; // C6 E6 G6 C7 E7
+        for (int i = 0; i < 5; ++i)
+            addNote(notes[i], i * (noteDur + gap), noteDur, 0.2f);
+        SoundBuffer buf;
+        buf.samples = std::move(samples);
+        buf.sampleRate = SAMPLE_RATE;
+        buffers_["combo"] = std::move(buf);
     }
 
     std::cout << "[Audio] Generated " << buffers_.size() << " procedural sound effects" << std::endl;
