@@ -1,0 +1,39 @@
+# Compiled binaries
+build/
+*.exe
+*.exe.stackdump
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+
+# IDE and editor files
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+sfml/*
+# CMake generated
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+CMakeUserPresets.json
+build/*
+# Compiled assets (if any)
+resources/*.png
+
+# Logs and temp
+*.log
+tmp/
+tk.txt
+note.txt
+note
+
