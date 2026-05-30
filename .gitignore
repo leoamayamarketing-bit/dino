@@ -9,7 +9,7 @@ build/
 *.dll
 *.so
 *.dylib
-error/
+error/*
 # IDE and editor files
 .vs/
 .vscode/
