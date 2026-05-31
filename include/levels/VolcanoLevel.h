@@ -19,6 +19,9 @@ private:
     sf::Color groundColor_{60, 20, 10};
     sf::Color lavaColor_{255, 69, 0};
     float lavaTimer_ = 0.0f;
+    float rockTimer_ = 0.0f;
+    float rockInterval_ = 1.8f;
+    ParticleSystem rockParticles_;
     std::vector<sf::FloatRect> lavaPools_;
 };
 

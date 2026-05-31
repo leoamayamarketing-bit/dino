@@ -35,6 +35,16 @@ void Game::init() {
     // Initialize procedural audio
     audioManager_.init();
 
+    // Load saved achievements and high scores
+    achievementSystem_.loadFromFile("achievements.dat");
+    gameState_.achievements = achievementSystem_.getUnlockedFlags();
+    highScoreManager_.loadFromFile("highscores.dat");
+
+    // Wire achievement unlock callback
+    achievementSystem_.onAchievementUnlock = [this]() {
+        audioManager_.playSound("achievement");
+    };
+
     // Initialize systems
     initSystems();
 
@@ -43,6 +53,7 @@ void Game::init() {
         sf::Font& font = assetManager_.getFont("main");
         menu_.init(font, assetManager_);
         menu_.setBindings(&keyBindings_);
+        menu_.setGameStatePointer(&gameState_);
         hud_.init(font);
         hud_.onComboMilestone = [this](int comboCount, sf::Vector2f screenPos) {
             audioManager_.playSound("combo");
@@ -57,6 +68,8 @@ void Game::init() {
                 gameState_.screenShakeTimer = 0.15f;
             }
         };
+        pauseMenu_.init(font);
+        achievementSystem_.init(font);
         gameOverScreen_.init(font);
     }
 
@@ -129,6 +142,7 @@ void Game::initCollisionRules() {
 
                     // Destroy the enemy
                     enemy->setActive(false);
+                    gameState_.enemiesDestroyed++;
                     return;
                 }
                 // Screen shake on damage
@@ -151,8 +165,10 @@ void Game::initCollisionRules() {
                 coinComp->collected = true;
                 float points = coinComp->value;
                 if (gameState_.doublePointsActive) points *= 2;
+                if (gameState_.hardMode) points *= 1.5f;
                 gameState_.score += points;
                 gameState_.coins++;
+                gameState_.totalCoinsCollected++;
                 audioManager_.playSound("coin");
 
                 // Emit golden particle burst at coin position
@@ -175,6 +191,8 @@ void Game::initCollisionRules() {
                 if (trans) {
                     emitPowerUpParticles(trans->position, pu->powerUpType);
                 }
+
+                gameState_.powerUpsCollected++;
 
                 switch (pu->powerUpType) {
                     case Constants::PowerUpType::SHIELD:
@@ -248,6 +266,7 @@ void Game::handleEvents() {
                     if (menu_.shouldStart()) {
                         gameState_.selectedDino = menu_.getSelectedDino();
                         gameState_.currentLevel = menu_.getSelectedLevel();
+                        gameState_.hardMode = menu_.isHardMode();
                         startGame();
                     }
                 }
@@ -260,12 +279,45 @@ void Game::handleEvents() {
                     menu_.reset();
                 }
             } else if (gameState_.currentState == Constants::GameStateType::PLAYING) {
+                // Toggle hard mode with H key
+                if (event.key.code == sf::Keyboard::H) {
+                    gameState_.hardMode = !gameState_.hardMode;
+                    audioManager_.playSound("select");
+                    // Adjust spawn intervals immediately
+                    levelManager_.setHardMode(gameState_.hardMode);
+                }
                 if (inputManager_.isPausePressed()) {
+                    pauseMenu_.reset();
                     gameState_.currentState = Constants::GameStateType::PAUSED;
+                    audioManager_.playSound("select");
                 }
             } else if (gameState_.currentState == Constants::GameStateType::PAUSED) {
+                // Toggle hard mode from pause menu too
+                if (event.key.code == sf::Keyboard::H) {
+                    gameState_.hardMode = !gameState_.hardMode;
+                    audioManager_.playSound("select");
+                    levelManager_.setHardMode(gameState_.hardMode);
+                }
                 if (inputManager_.isPausePressed()) {
+                    pauseMenu_.consumeResume();
                     gameState_.currentState = Constants::GameStateType::PLAYING;
+                } else if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::W) {
+                    pauseMenu_.navigateUp();
+                    audioManager_.playSound("select");
+                } else if (event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) {
+                    pauseMenu_.navigateDown();
+                    audioManager_.playSound("select");
+                } else if (event.key.code == sf::Keyboard::Space || event.key.code == sf::Keyboard::Enter) {
+                    audioManager_.playSound("select");
+                    pauseMenu_.selectCurrent();
+                    if (pauseMenu_.shouldRestart()) {
+                        pauseMenu_.consumeRestart();
+                        startGame();
+                    } else if (pauseMenu_.shouldQuit()) {
+                        pauseMenu_.consumeQuit();
+                        gameState_.currentState = Constants::GameStateType::MENU;
+                        menu_.reset();
+                    }
                 }
             }
         }
@@ -301,6 +353,11 @@ void Game::update(float deltaTime) {
             gameState_.distance += gameState_.currentSpeed * deltaTime * 0.1f;
             gameState_.gameTime += deltaTime;
 
+            // Hard mode: 1.5× score multiplier — also extra score from distance
+            if (gameState_.hardMode) {
+                gameState_.score += gameState_.distance * 0.1f * deltaTime;
+            }
+
             // Update level
             levelManager_.update(deltaTime, assetManager_, gameState_);
 
@@ -331,6 +388,44 @@ void Game::update(float deltaTime) {
             // Update screen shake
             updateScreenShake(deltaTime);
 
+            // Track max combo from HUD
+            if (hud_.getComboCount() > gameState_.maxCombo) {
+                gameState_.maxCombo = hud_.getComboCount();
+            }
+
+            // Dust trail behind player
+            dustTrailTimer_ += deltaTime;
+            if (gameState_.player && dustTrailTimer_ > 0.08f) {
+                dustTrailTimer_ = 0.0f;
+                auto* pTrans = gameState_.player->getComponent<TransformComponent>();
+                auto* pPhysics = gameState_.player->getComponent<PhysicsComponent>();
+                if (pTrans && pPhysics && pPhysics->isGrounded) {
+                    float speedRatio = (gameState_.currentSpeed - Constants::BASE_SPEED) /
+                                       (Constants::MAX_SPEED - Constants::BASE_SPEED);
+                    int count = 1 + static_cast<int>(speedRatio * 2);
+                    float size = 2.0f + speedRatio * 2.0f;
+                    sf::Color dustColor(
+                        static_cast<sf::Uint8>(140 + speedRatio * 60),
+                        static_cast<sf::Uint8>(120 + speedRatio * 40),
+                        static_cast<sf::Uint8>(80 + speedRatio * 20),
+                        static_cast<sf::Uint8>(100 + speedRatio * 80));
+                    particleSystem_.emit(
+                        sf::Vector2f(pTrans->position.x - 40.0f, pTrans->position.y),
+                        count, dustColor, 30.0f + speedRatio * 40.0f,
+                        0.4f + speedRatio * 0.3f, size);
+                }
+            }
+
+            // Check achievements
+            if (achievementSystem_.checkAchievements(gameState_)) {
+                audioManager_.playSound("achievement");
+            }
+            // Sync achievement flags back to GameState (for GameOverScreen display)
+            gameState_.achievements = achievementSystem_.getUnlockedFlags();
+
+            // Update achievement system toasts
+            achievementSystem_.update(deltaTime);
+
             // Update HUD with deltaTime for popup/combo animations
             hud_.update(gameState_, deltaTime);
 
@@ -342,7 +437,7 @@ void Game::update(float deltaTime) {
         }
 
         case Constants::GameStateType::PAUSED:
-            // Nothing updates while paused
+            pauseMenu_.update(deltaTime);
             break;
 
         case Constants::GameStateType::GAME_OVER:
@@ -397,34 +492,9 @@ void Game::render() {
             // Render HUD
             hud_.render(window_);
 
-            // Render pause overlay
+            // Render pause menu
             if (gameState_.currentState == Constants::GameStateType::PAUSED) {
-                sf::RectangleShape overlay(sf::Vector2f(
-                    Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT));
-                overlay.setFillColor(sf::Color(0, 0, 0, 128));
-                window_.draw(overlay);
-
-                if (assetManager_.hasFont("main")) {
-                    sf::Text pauseText;
-                    pauseText.setFont(assetManager_.getFont("main"));
-                    pauseText.setCharacterSize(48);
-                    pauseText.setFillColor(sf::Color::White);
-                    pauseText.setString("PAUSED");
-                    pauseText.setPosition(
-                        Constants::WINDOW_WIDTH / 2 - pauseText.getGlobalBounds().width / 2,
-                        Constants::WINDOW_HEIGHT / 2 - 50);
-                    window_.draw(pauseText);
-
-                    sf::Text resumeText;
-                    resumeText.setFont(assetManager_.getFont("main"));
-                    resumeText.setCharacterSize(24);
-                    resumeText.setFillColor(sf::Color(200, 200, 200));
-                    resumeText.setString("Press ESC to resume");
-                    resumeText.setPosition(
-                        Constants::WINDOW_WIDTH / 2 - resumeText.getGlobalBounds().width / 2,
-                        Constants::WINDOW_HEIGHT / 2 + 20);
-                    window_.draw(resumeText);
-                }
+                pauseMenu_.render(window_);
             }
             break;
         }
@@ -468,6 +538,12 @@ void Game::startGame() {
     gameState_.doublePointsTimer = 0.0f;
     gameState_.speedBoostTimer = 0.0f;
     gameState_.currentState = Constants::GameStateType::PLAYING;
+    gameState_.hardMode = false;
+    levelManager_.setHardMode(false);
+    gameState_.enemiesDestroyed = 0;
+    gameState_.maxCombo = 0;
+    gameState_.powerUpsCollected = 0;
+    gameState_.totalCoinsCollected = 0;
 
     // Clear old entities
     gameState_.entities.clear();
@@ -493,6 +569,25 @@ void Game::checkGameOver() {
     if (gameState_.score > gameState_.highScore) {
         gameState_.highScore = gameState_.score;
     }
+
+    // Submit to high score ranking
+    HighScoreEntry entry;
+    entry.score = static_cast<int>(gameState_.score);
+    entry.enemiesDestroyed = gameState_.enemiesDestroyed;
+    entry.maxCombo = gameState_.maxCombo;
+    entry.powerUpsCollected = gameState_.powerUpsCollected;
+    entry.distance = gameState_.distance;
+    entry.gameTime = gameState_.gameTime;
+    entry.hardMode = gameState_.hardMode;
+    bool isNewTopScore = highScoreManager_.submitScore(gameState_.currentLevel, entry);
+    if (isNewTopScore) {
+        highScoreManager_.saveToFile("highscores.dat");
+    }
+
+    // Get top scores for display
+    const auto& topScores = highScoreManager_.getScores(gameState_.currentLevel);
+    gameOverScreen_.setHighScores(topScores);
+
     gameOverScreen_.setScore(gameState_.score, gameState_.highScore);
     audioManager_.stopMusic();
     audioManager_.playSound("gameover");

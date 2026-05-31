@@ -32,8 +32,8 @@ void InfiniteLevel::update(float deltaTime, AssetManager& assets, GameState& sta
     std::vector<Entity*> emptyVec;
     parallax_.update(deltaTime, emptyVec);
 
-    // Increase difficulty over time
-    difficulty_ = 1.0f + state.gameTime / 60.0f;
+    // Increase difficulty over time — faster in hard mode
+    difficulty_ = (state.hardMode ? 2.0f : 1.0f) + state.gameTime / (state.hardMode ? 40.0f : 60.0f);
 
     // Change theme every 30 seconds
     themeChangeTimer_ += deltaTime;

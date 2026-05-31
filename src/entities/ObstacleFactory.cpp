@@ -6,6 +6,8 @@
 #include "../../include/components/CollisionComponent.h"
 #include "../../include/components/CoinComponent.h"
 #include "../../include/components/PowerUpComponent.h"
+#include "../../include/components/PhysicsComponent.h"
+#include "../../include/components/EnemyComponent.h"
 #include <cstdlib>
 
 std::unique_ptr<Entity> ObstacleFactory::createSmallCactus(AssetManager& assets, float x) {
@@ -35,6 +37,34 @@ std::unique_ptr<Entity> ObstacleFactory::createStalactite(AssetManager& assets, 
     auto& coll = entity->addComponent<CollisionComponent>(
         sf::FloatRect(x, y, 30, 60), "enemy");
     coll.isTrigger = false;
+
+    return entity;
+}
+
+std::unique_ptr<Entity> ObstacleFactory::createFallingRock(AssetManager& assets, float x) {
+    static uint32_t nextId = 600;
+    auto entity = std::make_unique<Entity>(nextId++);
+    float y = -60.0f; // Start above screen
+
+    entity->addComponent<TransformComponent>(x, y);
+
+    auto& sprite = entity->addComponent<SpriteComponent>("rock");
+    if (assets.hasTexture("rock")) {
+        sprite.setTexture(assets.getTexture("rock"));
+    }
+    sprite.zOrder = 5;
+
+    // Physics for falling (horizontal movement handled by EnemyAISystem)
+    auto& physics = entity->addComponent<PhysicsComponent>();
+    physics.usesGravity = true;
+    physics.velocity.y = 800.0f; // Already falling
+    physics.jumpsAvailable = 0;
+
+    auto& coll = entity->addComponent<CollisionComponent>(
+        sf::FloatRect(x, y, 40, 40), "enemy");
+    coll.isTrigger = false;
+    coll.isStatic = false;
+    coll.damageAmount = 2;
 
     return entity;
 }

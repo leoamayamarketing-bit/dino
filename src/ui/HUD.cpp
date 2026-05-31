@@ -94,6 +94,15 @@ void HUD::init(sf::Font& font) {
     speedBarFill_.setSize(sf::Vector2f(0.0f, 4.0f));
     speedBarFill_.setFillColor(sf::Color(100, 200, 255));
 
+    // ── Hard Mode Indicator (top-right corner of play area) ────────
+    hardModeText_.setFont(font);
+    hardModeText_.setCharacterSize(14);
+    hardModeText_.setStyle(sf::Text::Bold);
+    hardModeText_.setFillColor(sf::Color(255, 60, 60));
+    hardModeText_.setOutlineColor(sf::Color(200, 0, 0));
+    hardModeText_.setOutlineThickness(1.0f);
+    hardModeText_.setString("⚠ HARD MODE");
+
     // ── Combo Text ──────────────────────────────────────────────────
     comboText_.setFont(font);
     comboText_.setCharacterSize(22);
@@ -179,6 +188,7 @@ void HUD::update(const GameState& state, float deltaTime) {
 }
 
 void HUD::updateScoreSection(const GameState& state) {
+    state_ = &state;
     // Format score with leading zeros (5 digits)
     int score = static_cast<int>(state.score);
     std::ostringstream ss;
@@ -377,6 +387,15 @@ void HUD::renderTopBar(sf::RenderWindow& window) {
     window.draw(speedText_);
     window.draw(speedBarBg_);
     window.draw(speedBarFill_);
+
+    // Hard mode indicator (top-right corner)
+    if (state_ && state_->hardMode) {
+        sf::FloatRect hardBounds = hardModeText_.getGlobalBounds();
+        hardModeText_.setPosition(
+            Constants::WINDOW_WIDTH - hardBounds.width - 20.0f,
+            TOP_BAR_HEIGHT + 12.0f);
+        window.draw(hardModeText_);
+    }
 }
 
 void HUD::renderPopups(sf::RenderWindow& window) {

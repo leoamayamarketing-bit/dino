@@ -26,5 +26,8 @@ void PowerUpSystem::update(float deltaTime, std::vector<Entity*>& entities) {
 
         // Float up and down
         transform->position.y += std::sin(timer * 2.0f + transform->position.x * 0.1f) * 0.3f;
+
+        // Scroll with world (move left so the player can reach them)
+        transform->position.x -= state_.currentSpeed * deltaTime;
     }
 }

@@ -18,6 +18,9 @@ private:
     sf::Color groundColor_{30, 30, 40};
     std::vector<sf::Vector2f> stalactites_;
     float stalactiteTimer_ = 0.0f;
+    float rockTimer_ = 0.0f;
+    float rockInterval_ = 2.5f;
+    ParticleSystem rockParticles_;
 };
 
 #endif

@@ -55,16 +55,32 @@ void VolcanoLevel::update(float deltaTime, AssetManager& assets, GameState& stat
             1, lavaColor_, 60.0f, 0.8f, 5.0f);
     }
 
+    // Falling lava rocks from volcano
+    rockTimer_ += deltaTime;
+    if (rockTimer_ > rockInterval_) {
+        rockTimer_ = 0.0f;
+        rockInterval_ = 1.0f + (std::rand() % 15) / 10.0f; // 1.0-2.5s
+        float rockX = 80.0f + std::rand() % (Constants::WINDOW_WIDTH - 160);
+        auto rock = ObstacleFactory::createFallingRock(assets, rockX);
+        state.entities.push_back(std::move(rock));
+    }
+
     spawnTimer_ += deltaTime;
     if (spawnTimer_ >= spawnInterval_) {
         spawnTimer_ = 0.0f;
         spawnObstacles(state, assets);
-        spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - 0.04f);
+        spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - (state.hardMode ? 0.08f : 0.04f));
+    }
+
+    // In hard mode, lava rocks fall much more frequently
+    if (state.hardMode) {
+        rockInterval_ = 0.6f + (std::rand() % 10) / 10.0f;
     }
 
     cleanupOffscreen(state);
     ashParticles_.updateParticles(deltaTime);
     lavaParticles_.updateParticles(deltaTime);
+    rockParticles_.updateParticles(deltaTime);
 }
 
 void VolcanoLevel::render(sf::RenderWindow& window) {
@@ -97,6 +113,7 @@ void VolcanoLevel::render(sf::RenderWindow& window) {
     parallax_.render(window);
     ashParticles_.render(window);
     lavaParticles_.render(window);
+    rockParticles_.render(window);
 }
 
 void VolcanoLevel::spawnObstacles(GameState& state, AssetManager& assets) {

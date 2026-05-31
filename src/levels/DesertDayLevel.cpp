@@ -49,7 +49,7 @@ void DesertDayLevel::update(float deltaTime, AssetManager& assets, GameState& st
     if (spawnTimer_ >= spawnInterval_) {
         spawnTimer_ = 0.0f;
         spawnObstacles(state, assets);
-        spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - 0.04f);
+        spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - (state.hardMode ? 0.08f : 0.04f));
     }
 
     // Clean up offscreen entities

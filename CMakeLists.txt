@@ -57,7 +57,10 @@ set(SOURCES
     src/levels/InfiniteLevel.cpp
     src/ui/HUD.cpp
     src/ui/Menu.cpp
+    src/ui/PauseMenu.cpp
     src/ui/GameOverScreen.cpp
+    src/core/AchievementSystem.cpp
+    src/core/HighScoreManager.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

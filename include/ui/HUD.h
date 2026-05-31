@@ -17,6 +17,7 @@ public:
     void init(sf::Font& font);
     void update(const GameState& state, float deltaTime);
     void render(sf::RenderWindow& window);
+    int getComboCount() const { return lastComboCount_; }
 
 private:
     // ── Top Status Bar ─────────────────────────────────────────────────
@@ -66,6 +67,9 @@ private:
     float comboVisibleTimer_ = 0.0f;
     int lastComboCount_ = 0;
 
+    // ── Hard Mode Indicator ────────────────────────────────────────────
+    sf::Text hardModeText_;
+
     // ── Power-Up Indicators (below top bar) ────────────────────────────
     struct PowerUpBar {
         sf::Text label;
@@ -83,6 +87,7 @@ private:
     PowerUpBar speedBoostBar_;
 
     // ── Tracking for auto-detect popups & combo ─────────────────────────
+    const GameState* state_ = nullptr;
     float prevScore_ = 0.0f;
     int prevCoins_ = 0;
     float lastCoinTime_ = 0.0f;

@@ -13,6 +13,7 @@ public:
     static std::unique_ptr<Entity> createLargeCactus(AssetManager& assets, float x);
     static std::unique_ptr<Entity> createRock(AssetManager& assets, float x);
     static std::unique_ptr<Entity> createStalactite(AssetManager& assets, float x);
+    static std::unique_ptr<Entity> createFallingRock(AssetManager& assets, float x);
     static std::unique_ptr<Entity> createCoin(AssetManager& assets, float x, float y);
     static std::unique_ptr<Entity> createPowerUp(AssetManager& assets,
                                                    Constants::PowerUpType type,

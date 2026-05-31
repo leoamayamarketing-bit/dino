@@ -52,9 +52,19 @@ struct GameState {
     float screenShakeIntensity = 0.0f;
     float screenShakeTimer = 0.0f;
 
-    // Timer
+    // Game stats
     float gameTime = 0.0f;
     float levelTransitionTimer = 0.0f;
+    int enemiesDestroyed = 0;
+    int maxCombo = 0;
+    int powerUpsCollected = 0;
+    int totalCoinsCollected = 0;
+
+    // Hard mode
+    bool hardMode = false;
+
+    // Achievements (bitmask)
+    uint32_t achievements = 0;
 
     void reset() {
         lives = Constants::INITIAL_LIVES;
@@ -75,6 +85,12 @@ struct GameState {
         screenShakeIntensity = 0.0f;
         screenShakeTimer = 0.0f;
         levelProgress = 0.0f;
+        enemiesDestroyed = 0;
+        maxCombo = 0;
+        powerUpsCollected = 0;
+        totalCoinsCollected = 0;
+        achievements = 0;
+        hardMode = false;
         entities.clear();
         player = nullptr;
     }

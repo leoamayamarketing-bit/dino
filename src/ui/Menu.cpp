@@ -21,13 +21,14 @@ void Menu::init(sf::Font& font, AssetManager& assets) {
     // Menu items
     const char* menuLabels[] = {
         "Start Game",
+        "Hard Mode: OFF",
         "Select Dinosaur",
         "Select Level",
         "Options",
         "Quit"
     };
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
         sf::Text item;
         item.setFont(font);
         item.setCharacterSize(28);
@@ -172,7 +173,7 @@ void Menu::handleInput(const GameState& state) {
     int maxIndex = 0;
 
     switch (menuState_) {
-        case MenuState::MAIN: maxIndex = 4; break;
+        case MenuState::MAIN: maxIndex = 5; break;
         case MenuState::DINO_SELECT: maxIndex = 2; break;
         case MenuState::LEVEL_SELECT: maxIndex = 4; break;
         case MenuState::OPTIONS: maxIndex = 2; break;
@@ -190,19 +191,26 @@ void Menu::handleInput(const GameState& state) {
 
     if (navSelect()) {
         switch (menuState_) {
-            case MenuState::MAIN:
-                switch (menuIndex_) {
-                    case 0: shouldStart_ = true; break;                    // Start Game
-                    case 1: menuState_ = MenuState::DINO_SELECT; menuIndex_ = 0; break;
-                    case 2: menuState_ = MenuState::LEVEL_SELECT; menuIndex_ = 0; break;
-                    case 3:                                                 // Options
-                        menuState_ = MenuState::OPTIONS;
-                        menuIndex_ = 0;
-                        if (bindings_) bindings_->getActions(remapActions_);
-                        break;
-                    case 4: std::exit(0); break;                            // Quit
-                }
-                break;
+        case MenuState::MAIN:
+            switch (menuIndex_) {
+                case 0: shouldStart_ = true; break;                    // Start Game
+                case 1:                                                 // Hard Mode toggle
+                    hardMode_ = !hardMode_;
+                    menuItems_[1].setString(hardMode_ ? "Hard Mode: ON" : "Hard Mode: OFF");
+                    menuItems_[1].setPosition(
+                        Constants::WINDOW_WIDTH / 2 - menuItems_[1].getGlobalBounds().width / 2,
+                        200 + 1 * 50);
+                    break;
+                case 2: menuState_ = MenuState::DINO_SELECT; menuIndex_ = 0; break;
+                case 3: menuState_ = MenuState::LEVEL_SELECT; menuIndex_ = 0; break;
+                case 4:                                                 // Options
+                    menuState_ = MenuState::OPTIONS;
+                    menuIndex_ = 0;
+                    if (bindings_) bindings_->getActions(remapActions_);
+                    break;
+                case 5: std::exit(0); break;                            // Quit
+            }
+            break;
 
             case MenuState::DINO_SELECT:
                 selectedDino_ = static_cast<Constants::DinoType>(menuIndex_);
@@ -430,8 +438,14 @@ void Menu::updateMenuSelection() {
     switch (menuState_) {
         case MenuState::MAIN:
             for (size_t i = 0; i < menuItems_.size(); i++) {
-                menuItems_[i].setFillColor(
-                    static_cast<int>(i) == menuIndex_ ? sf::Color::Yellow : sf::Color::White);
+                if (static_cast<int>(i) == menuIndex_) {
+                    menuItems_[i].setFillColor(sf::Color::Yellow);
+                } else if (i == 1) {
+                    // Hard mode: red when ON, dimmed red when OFF
+                    menuItems_[i].setFillColor(hardMode_ ? sf::Color(255, 80, 80) : sf::Color(160, 100, 100));
+                } else {
+                    menuItems_[i].setFillColor(sf::Color::White);
+                }
             }
             break;
         case MenuState::DINO_SELECT:
@@ -464,6 +478,13 @@ void Menu::updateMenuSelection() {
 // ===========================================================================
 // Render sub-screens
 // ===========================================================================
+void Menu::updateHardModeLabel() {
+    menuItems_[1].setString(hardMode_ ? "Hard Mode: ON" : "Hard Mode: OFF");
+    menuItems_[1].setPosition(
+        Constants::WINDOW_WIDTH / 2 - menuItems_[1].getGlobalBounds().width / 2,
+        200 + 1 * 50);
+}
+
 void Menu::renderMain(sf::RenderWindow& window) {
     for (auto& item : menuItems_) {
         window.draw(item);
@@ -489,12 +510,28 @@ void Menu::renderMain(sf::RenderWindow& window) {
         case Constants::LevelType::VOLCANO: info += "Volcano"; break;
         case Constants::LevelType::INFINITE: info += "Infinite"; break;
     }
+    if (hardMode_) info += " | ⚠ HARD MODE";
 
     infoText.setString(info);
     infoText.setPosition(
         Constants::WINDOW_WIDTH / 2 - infoText.getGlobalBounds().width / 2,
         480);
     window.draw(infoText);
+
+    // Draw high scores section
+    if (gameState_) {
+        sf::Text hsTitle;
+        hsTitle.setFont(*menuItems_[0].getFont());
+        hsTitle.setCharacterSize(14);
+        hsTitle.setFillColor(sf::Color(180, 160, 100));
+        std::string hsStr = "Best: " + std::to_string(static_cast<int>(gameState_->highScore));
+        if (gameState_->hardMode) hsStr += " (Hard)";
+        hsTitle.setString(hsStr);
+        hsTitle.setPosition(
+            Constants::WINDOW_WIDTH / 2 - hsTitle.getGlobalBounds().width / 2,
+            510);
+        window.draw(hsTitle);
+    }
 }
 
 void Menu::renderDinoSelect(sf::RenderWindow& window) {

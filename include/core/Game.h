@@ -28,6 +28,9 @@
 #include "../ui/HUD.h"
 #include "../ui/Menu.h"
 #include "../ui/GameOverScreen.h"
+#include "../ui/PauseMenu.h"
+#include "../core/AchievementSystem.h"
+#include "../core/HighScoreManager.h"
 
 class Game {
 public:
@@ -65,7 +68,15 @@ private:
     // UI
     Menu menu_;
     HUD hud_;
+    PauseMenu pauseMenu_;
     GameOverScreen gameOverScreen_;
+
+    // Achievements & High Scores
+    AchievementSystem achievementSystem_;
+    HighScoreManager highScoreManager_;
+
+    // Dust trail timer
+    float dustTrailTimer_ = 0.0f;
 
     void init();
     void initSystems();

@@ -37,6 +37,7 @@ public:
     bool isDinoSelected() const { return dinoSelected_; }
     bool isLevelSelected() const { return levelSelected_; }
     bool shouldStart() const { return shouldStart_; }
+    bool isHardMode() const { return hardMode_; }
 
     bool isWaitingForKey() const { return waitingForKey_; }
     bool captureKey(sf::Keyboard::Key key);  // returns true if key was captured
@@ -44,6 +45,7 @@ public:
     void reset();
     void setMenuState(int state) { menuState_ = static_cast<MenuState>(state); }
     void buildRemapItems();
+    void setGameStatePointer(const GameState* state) { gameState_ = state; }
 
 private:
     enum class MenuState {
@@ -58,6 +60,7 @@ private:
     MenuOption selectedOption_ = MenuOption::START_GAME;
     Constants::DinoType selectedDino_ = Constants::DinoType::TREX;
     Constants::LevelType selectedLevel_ = Constants::LevelType::DESERT_DAY;
+    bool hardMode_ = false;
     bool dinoSelected_ = false;
     bool levelSelected_ = false;
     bool shouldStart_ = false;
@@ -70,6 +73,7 @@ private:
     bool waitingForKey_ = false;  // true when listening for a new key press
 
     KeyBindings* bindings_ = nullptr;
+    const GameState* gameState_ = nullptr;
 
     std::vector<KeyBindings::ActionEntry> remapActions_;
 
@@ -99,6 +103,7 @@ private:
 
     void startRemapping();
     void finishRemapping();
+    void updateHardModeLabel();
 };
 
 #endif

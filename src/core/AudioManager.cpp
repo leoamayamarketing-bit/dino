@@ -214,6 +214,50 @@ void AudioManager::init() {
         buffers_["land"] = createSoundBuffer(p);
     }
 
+    // ---------- ACHIEVEMENT: triumphant fanfare ----------
+    {
+        float noteDur = 0.12f;
+        float gap = 0.04f;
+        float totalDur = (noteDur + gap) * 6 + 0.15f;
+        std::vector<int16_t> samples(static_cast<size_t>(totalDur * SAMPLE_RATE), 0);
+        auto addNote = [&](float freq, float startTime, float dur, float amp) {
+            size_t start = static_cast<size_t>(startTime * SAMPLE_RATE);
+            size_t end   = static_cast<size_t>((startTime + dur) * SAMPLE_RATE);
+            for (size_t i = start; i < end && i < samples.size(); ++i) {
+                float t = static_cast<float>(i) / SAMPLE_RATE;
+                float localT = t - startTime;
+                float env = std::min(1.0f, localT / 0.005f);
+                env *= std::max(0.0f, 1.0f - (localT - dur + 0.06f) / 0.06f);
+                float sample = std::sin(2.0f * 3.14159f * freq * t);
+                sample += std::sin(2.0f * 3.14159f * freq * 2.0f * t) * 0.4f;
+                sample += std::sin(2.0f * 3.14159f * freq * 3.0f * t) * 0.2f;
+                samples[i] += static_cast<int16_t>(sample * amp * env * 30000);
+            }
+        };
+        // Triumphant ascending arpeggio: C5 E5 G5 C6 E6 G6
+        float notes[] = {523.0f, 659.0f, 784.0f, 1047.0f, 1319.0f, 1568.0f};
+        for (int i = 0; i < 6; ++i)
+            addNote(notes[i], i * (noteDur + gap), noteDur, 0.3f - i * 0.025f);
+        // Add a sustained final chord (C major)
+        size_t chordStart = static_cast<size_t>(6 * (noteDur + gap) * SAMPLE_RATE);
+        for (size_t i = chordStart; i < samples.size(); ++i) {
+            float t = static_cast<float>(i) / SAMPLE_RATE;
+            float chordProgress = (t - 6 * (noteDur + gap)) / 0.15f;
+            float env = std::min(1.0f, chordProgress * 4.0f) * std::max(0.0f, 1.0f - chordProgress);
+            float chord = 0.0f;
+            chord += std::sin(2.0f * 3.14159f * 523.0f * t);  // C5
+            chord += std::sin(2.0f * 3.14159f * 659.0f * t);  // E5
+            chord += std::sin(2.0f * 3.14159f * 784.0f * t);  // G5
+            chord += std::sin(2.0f * 3.14159f * 1047.0f * t); // C6
+            samples[i] += static_cast<int16_t>(chord * 0.2f * env * 25000);
+        }
+
+        SoundBuffer buf;
+        buf.samples = std::move(samples);
+        buf.sampleRate = SAMPLE_RATE;
+        buffers_["achievement"] = std::move(buf);
+    }
+
     // ---------- COMBO: ascending chime ----------
     {
         float noteDur = 0.04f;

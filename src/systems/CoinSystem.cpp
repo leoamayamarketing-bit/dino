@@ -29,6 +29,7 @@ void CoinSystem::update(float deltaTime, std::vector<Entity*>& entities) {
             sprite->sprite.setScale(scaleX, 1.0f);
         }
 
-        // Scroll with world (handled by EnemyAISystem or level)
+        // Scroll with world (move left so the player can reach them)
+        transform->position.x -= state_.currentSpeed * deltaTime;
     }
 }

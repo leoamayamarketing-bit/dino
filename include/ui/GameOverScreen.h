@@ -4,7 +4,9 @@
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Text.hpp>
 #include <SFML/Graphics/Font.hpp>
-#include "../core/GameState.h"
+#include <vector>
+#include "..//core/GameState.h"
+#include "..//core/HighScoreManager.h"
 
 class GameOverScreen {
 public:
@@ -19,6 +21,7 @@ public:
     void reset();
     void handleInput(const GameState& state);
     void setScore(float score, float highScore);
+    void setHighScores(const std::vector<HighScoreEntry>& scores);
     void setKeyPressed(bool restart, bool menu);
 
 private:
@@ -30,6 +33,12 @@ private:
     sf::Text restartText_;
     sf::Text menuText_;
     sf::Text newHighScoreText_;
+
+    // Detailed stats
+    sf::Text enemiesText_;
+    sf::Text comboText_;
+    sf::Text powerUpsText_;
+    sf::Text timeText_;
 
     bool shouldRestart_ = false;
     bool shouldMenu_ = false;
@@ -43,6 +52,18 @@ private:
     float highScore_ = 0.0f;
     int coins_ = 0;
     float distance_ = 0.0f;
+    int enemies_ = 0;
+    int maxCombo_ = 0;
+    int powerUps_ = 0;
+    float gameTime_ = 0.0f;
+
+    // Unlocked achievements in this run
+    uint32_t runAchievements_ = 0;
+
+    // Top scores for display
+    std::vector<HighScoreEntry> topScores_;
+    sf::Text hsTitleText_;
+    sf::Text hsEntriesText_;
 };
 
 #endif

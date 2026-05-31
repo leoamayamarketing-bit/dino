@@ -54,15 +54,31 @@ void CaveLevel::update(float deltaTime, AssetManager& assets, GameState& state) 
         state.entities.push_back(std::move(stalactite));
     }
 
+    // Falling rocks from cave ceiling
+    rockTimer_ += deltaTime;
+    if (rockTimer_ > rockInterval_) {
+        rockTimer_ = 0.0f;
+        rockInterval_ = 1.5f + (std::rand() % 20) / 10.0f; // 1.5-3.5s
+        float rockX = 100.0f + std::rand() % (Constants::WINDOW_WIDTH - 200);
+        auto rock = ObstacleFactory::createFallingRock(assets, rockX);
+        state.entities.push_back(std::move(rock));
+    }
+
     spawnTimer_ += deltaTime;
     if (spawnTimer_ >= spawnInterval_) {
         spawnTimer_ = 0.0f;
         spawnObstacles(state, assets);
-        spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - 0.04f);
+        spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - (state.hardMode ? 0.08f : 0.04f));
+    }
+
+    // In hard mode, falling rocks are more frequent
+    if (state.hardMode) {
+        rockInterval_ = 0.8f + (std::rand() % 15) / 10.0f;
     }
 
     cleanupOffscreen(state);
     dripParticles_.updateParticles(deltaTime);
+    rockParticles_.updateParticles(deltaTime);
 }
 
 void CaveLevel::render(sf::RenderWindow& window) {
@@ -93,6 +109,7 @@ void CaveLevel::render(sf::RenderWindow& window) {
 
     parallax_.render(window);
     dripParticles_.render(window);
+    rockParticles_.render(window);
 }
 
 void CaveLevel::spawnObstacles(GameState& state, AssetManager& assets) {
