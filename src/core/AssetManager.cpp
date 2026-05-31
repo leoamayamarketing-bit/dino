@@ -551,10 +551,10 @@ std::string AssetManager::getAssetsPath() {
 
 // Static helper: remove white/light background from a texture by setting
 // near-white pixels to fully transparent. Used for PNGs with solid white backgrounds.
-static void makeBackgroundTransparent(sf::Texture& tex) {
+// Higher tolerance = more aggressive removal of near-white edge pixels.
+static void makeBackgroundTransparent(sf::Texture& tex, int tolerance = 30) {
     sf::Image img = tex.copyToImage();
     const sf::Color keyColor(255, 255, 255);
-    const int tolerance = 30;
 
     for (unsigned y = 0; y < img.getSize().y; ++y) {
         for (unsigned x = 0; x < img.getSize().x; ++x) {
@@ -566,6 +566,28 @@ static void makeBackgroundTransparent(sf::Texture& tex) {
             if (dr * dr + dg * dg + db * db <= tolerance * tolerance) {
                 c.a = 0;
                 img.setPixel(x, y, c);
+            }
+        }
+    }
+    tex.loadFromImage(img);
+}
+
+// Replace white/near-white pixels with a solid fill color instead of transparent.
+// Used for ground textures that need opaque edges for seamless tiling.
+static void replaceWhiteWithColor(sf::Texture& tex, const sf::Color& fillColor) {
+    sf::Image img = tex.copyToImage();
+    const sf::Color keyColor(255, 255, 255);
+    const int tolerance = 45;  // more aggressive for ground to avoid any white remnants
+
+    for (unsigned y = 0; y < img.getSize().y; ++y) {
+        for (unsigned x = 0; x < img.getSize().x; ++x) {
+            sf::Color c = img.getPixel(x, y);
+            if (c.a < 255) continue;
+            int dr = static_cast<int>(c.r) - static_cast<int>(keyColor.r);
+            int dg = static_cast<int>(c.g) - static_cast<int>(keyColor.g);
+            int db = static_cast<int>(c.b) - static_cast<int>(keyColor.b);
+            if (dr * dr + dg * dg + db * db <= tolerance * tolerance) {
+                img.setPixel(x, y, fillColor);
             }
         }
     }
@@ -641,19 +663,26 @@ void AssetManager::loadGameplayPNGAssets() {
     struct PNGAsset {
         std::string texName;
         std::string filename;
+        bool isGround;  // ground needs opaque fill instead of transparency for seamless tiling
     };
     
     const PNGAsset assets[] = {
-        {"ground",        "piso.png"},
-        {"cloud",         "nube.png"},
-        {"cactus_small",  "un_cactus.png"},
-        {"cactus_large",  "dos_cactus.png"},
-        {"pterodactyl",   "ave.png"},
+        {"ground",        "piso.png",       true},
+        {"cloud",         "nube.png",       false},
+        {"cactus_small",  "un_cactus.png",  false},
+        {"cactus_large",  "dos_cactus.png", false},
+        {"pterodactyl",   "ave.png",        false},
     };
     
     for (const auto& a : assets) {
         if (loadPNGTexture(a.texName, a.filename)) {
-            makeBackgroundTransparent(textures_[a.texName]);
+            if (a.isGround) {
+                // Replace white background with solid dirt color for seamless tiling.
+                // This prevents 1-pixel translucent white seams between tiled copies.
+                replaceWhiteWithColor(textures_[a.texName], sf::Color(100, 80, 50));
+            } else {
+                makeBackgroundTransparent(textures_[a.texName]);
+            }
             std::cout << "[AssetManager] Loaded gameplay asset: "
                       << a.filename << " -> '" << a.texName << "'" << std::endl;
         }

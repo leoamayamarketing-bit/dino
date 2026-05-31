@@ -53,6 +53,7 @@ set(SOURCES
     src/levels/DesertDayLevel.cpp
     src/levels/DesertNightLevel.cpp
     src/levels/CaveLevel.cpp
+    src/levels/GrayscaleLevel.cpp
     src/levels/VolcanoLevel.cpp
     src/levels/InfiniteLevel.cpp
     src/ui/HUD.cpp

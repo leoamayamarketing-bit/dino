@@ -53,6 +53,8 @@ std::unique_ptr<Level> LevelManager::createLevel(Constants::LevelType type) {
             return std::make_unique<VolcanoLevel>();
         case Constants::LevelType::INFINITE:
             return std::make_unique<InfiniteLevel>();
+        case Constants::LevelType::GRAYSCALE:
+            return std::make_unique<GrayscaleLevel>();
     }
     return nullptr;
 }

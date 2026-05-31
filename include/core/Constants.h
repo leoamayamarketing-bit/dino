@@ -73,7 +73,8 @@ namespace Constants {
         DESERT_NIGHT,
         CAVE,
         VOLCANO,
-        INFINITE
+        INFINITE,
+        GRAYSCALE
     };
 
     // ECS

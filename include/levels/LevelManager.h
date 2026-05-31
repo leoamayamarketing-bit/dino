@@ -7,6 +7,7 @@
 #include "CaveLevel.h"
 #include "VolcanoLevel.h"
 #include "InfiniteLevel.h"
+#include "GrayscaleLevel.h"
 #include "../core/AssetManager.h"
 #include "../core/GameState.h"
 #include <memory>

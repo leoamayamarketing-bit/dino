@@ -23,6 +23,9 @@ public:
     void setScrollDirection(float x) { scrollX_ = x; }
     void render(sf::RenderWindow& window);
     void clear();
+    /// Enable a grayscale tint on all parallax layers
+    void setGrayscaleTint(bool enabled) { grayscaleTint_ = enabled; }
+    bool grayscaleTint_ = false;
 
 private:
     std::vector<ParallaxLayer> layers_;

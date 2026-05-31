@@ -65,10 +65,11 @@ void Menu::init(sf::Font& font, AssetManager& assets) {
         "Desert (Night)",
         "Caverns",
         "Volcano",
-        "Infinite Mode"
+        "Infinite Mode",
+        "Grayscale"
     };
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
         sf::Text item;
         item.setFont(font);
         item.setCharacterSize(26);
@@ -175,7 +176,7 @@ void Menu::handleInput(const GameState& state) {
     switch (menuState_) {
         case MenuState::MAIN: maxIndex = 5; break;
         case MenuState::DINO_SELECT: maxIndex = 2; break;
-        case MenuState::LEVEL_SELECT: maxIndex = 4; break;
+        case MenuState::LEVEL_SELECT: maxIndex = 5; break;
         case MenuState::OPTIONS: maxIndex = 2; break;
         case MenuState::KEY_REMAP: maxIndex = static_cast<int>(remapItems_.size()) - 1; break;
     }
@@ -509,6 +510,7 @@ void Menu::renderMain(sf::RenderWindow& window) {
         case Constants::LevelType::CAVE: info += "Caverns"; break;
         case Constants::LevelType::VOLCANO: info += "Volcano"; break;
         case Constants::LevelType::INFINITE: info += "Infinite"; break;
+        case Constants::LevelType::GRAYSCALE: info += "Grayscale"; break;
     }
     if (hardMode_) info += " | ⚠ HARD MODE";
 
