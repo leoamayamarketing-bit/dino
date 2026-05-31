@@ -74,7 +74,8 @@ namespace Constants {
         CAVE,
         VOLCANO,
         INFINITE,
-        GRAYSCALE
+        GRAYSCALE,
+        AQUATIC
     };
 
     // ECS

@@ -8,6 +8,7 @@
 #include "VolcanoLevel.h"
 #include "InfiniteLevel.h"
 #include "GrayscaleLevel.h"
+#include "AquaticLevel.h"
 #include "../core/AssetManager.h"
 #include "../core/GameState.h"
 #include <memory>

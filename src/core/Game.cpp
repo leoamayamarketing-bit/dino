@@ -563,6 +563,16 @@ void Game::startGame() {
         gameState_.selectedDino, assetManager_,
         100.0f, Constants::GROUND_Y);
 
+    // Set player sprite tint based on level for visibility
+    // Night and grayscale levels darken the sprite, so we lighten it to stand out
+    if (gameState_.currentLevel == Constants::LevelType::DESERT_NIGHT ||
+        gameState_.currentLevel == Constants::LevelType::GRAYSCALE) {
+        auto* sprite = player->getComponent<SpriteComponent>();
+        if (sprite) {
+            sprite->setColor(sf::Color(200, 200, 200));
+        }
+    }
+
     // Store pointer to player for systems
     gameState_.player = player.get();
     gameState_.entities.push_back(std::move(player));

@@ -6,6 +6,7 @@
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/CircleShape.hpp>
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 
 void GrayscaleLevel::init(AssetManager& assets, GameState& state) {
@@ -13,9 +14,7 @@ void GrayscaleLevel::init(AssetManager& assets, GameState& state) {
     spawnTimer_ = 0.0f;
     minSpawnInterval_ = 1.3f;
 
-    if (assets.hasTexture("ground")) {
-        parallax_.addLayer(assets.getTexture("ground"), 1.0f, Constants::GROUND_Y);
-    }
+    // ONLY add clouds to parallax — ground is rendered manually in grayscale
     if (assets.hasTexture("cloud")) {
         parallax_.addLayer(assets.getTexture("cloud"), 0.2f, 30.0f);
     }
@@ -23,13 +22,16 @@ void GrayscaleLevel::init(AssetManager& assets, GameState& state) {
     parallax_.setGrayscaleTint(true);
     parallax_.setScrollDirection(1.0f);
 
-    // Generate city skyline silhouette — widths and heights generated ONCE here
+    // Generate city skyline silhouette — widths, heights, and window data generated ONCE here
     citySilhouette_.clear();
     for (int i = 0; i < 12; i++) {
         GrayscaleBuilding b;
         b.x = i * 110.0f + (std::rand() % 40);
         b.width = 60.0f + (std::rand() % 20);
         b.height = 80.0f + (std::rand() % 150);
+        // Pre-determine window lights (not randomized per frame in render())
+        b.hasWindow = (b.x + b.width) > 100.0f && (std::rand() % 3 == 0);
+        b.hasSecondWindow = b.hasWindow && (std::rand() % 2 == 0);
         citySilhouette_.push_back(b);
     }
 
@@ -40,6 +42,9 @@ void GrayscaleLevel::update(float deltaTime, AssetManager& assets, GameState& st
     parallax_.setScrollDirection(state.currentSpeed);
     std::vector<Entity*> emptyVec;
     parallax_.update(deltaTime, emptyVec);
+
+    // Animate ground detail offset for subtle scrolling texture
+    groundScrollOffset_ = std::fmod(groundScrollOffset_ + state.currentSpeed * deltaTime * 0.5f, 12.0f);
 
     // Fog/smog particles drifting across
     fogTimer_ += deltaTime;
@@ -87,20 +92,55 @@ void GrayscaleLevel::render(sf::RenderWindow& window) {
         roof.setFillColor(sf::Color(100, 100, 100));
         roof.setPosition(b.x, Constants::GROUND_Y - b.height - 4);
         window.draw(roof);
+
+        // Tiny window lights on some buildings (pre-determined in init())
+        if (b.hasWindow) {
+            sf::RectangleShape win(sf::Vector2f(4, 5));
+            win.setFillColor(sf::Color(140, 140, 140));
+            win.setPosition(b.x + b.width * 0.3f, Constants::GROUND_Y - b.height + 20);
+            window.draw(win);
+        }
+        // Extra second window on some buildings
+        if (b.hasSecondWindow) {
+            sf::RectangleShape win2(sf::Vector2f(4, 5));
+            win2.setFillColor(sf::Color(130, 130, 130));
+            win2.setPosition(b.x + b.width * 0.6f, Constants::GROUND_Y - b.height + 40);
+            window.draw(win2);
+        }
     }
 
-    // Ground fill below GROUND_Y
+    // Ground fill below GROUND_Y — using a neutral dark gray
     sf::RectangleShape groundFill(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT - Constants::GROUND_Y));
-    groundFill.setFillColor(sf::Color(60, 60, 60));
+    groundFill.setFillColor(sf::Color(55, 55, 55));
     groundFill.setPosition(0, Constants::GROUND_Y);
     window.draw(groundFill);
 
-    // Ground line
+    // Ground surface line (top edge of ground)
     sf::RectangleShape groundLine(sf::Vector2f(Constants::WINDOW_WIDTH, 3));
-    groundLine.setFillColor(sf::Color(40, 40, 40));
+    groundLine.setFillColor(sf::Color(35, 35, 35));
     groundLine.setPosition(0, Constants::GROUND_Y);
     window.draw(groundLine);
 
+    // Subtle ground-surface highlight
+    sf::RectangleShape groundHighlight(sf::Vector2f(Constants::WINDOW_WIDTH, 1));
+    groundHighlight.setFillColor(sf::Color(80, 80, 80));
+    groundHighlight.setPosition(0, Constants::GROUND_Y + 3);
+    window.draw(groundHighlight);
+
+    // Gravel / texture dots on the ground (scrolling subtly)
+    sf::CircleShape gravel(1.0f);
+    for (int i = 0; i < 30; i++) {
+        float gx = (i * 43.0f + groundScrollOffset_) - 10.0f;
+        while (gx < 0.0f) gx += Constants::WINDOW_WIDTH;
+        while (gx >= Constants::WINDOW_WIDTH) gx -= Constants::WINDOW_WIDTH;
+        float gy = Constants::GROUND_Y + 8.0f + static_cast<float>((i * 17) % 60);
+        int grayVal = 70 + (i * 7) % 25;
+        gravel.setFillColor(sf::Color(grayVal, grayVal, grayVal));
+        gravel.setPosition(gx, gy);
+        window.draw(gravel);
+    }
+
+    // Render clouds from parallax (grayscale tinted)
     parallax_.render(window);
     smokeParticles_.render(window);
 }

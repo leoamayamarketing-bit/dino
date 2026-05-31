@@ -7,6 +7,8 @@ struct GrayscaleBuilding {
     float x;
     float width;
     float height;
+    bool hasWindow = false;
+    bool hasSecondWindow = false;
 };
 
 class GrayscaleLevel : public Level {
@@ -22,6 +24,7 @@ private:
     ParticleSystem smokeParticles_;
     sf::Color skyColor_{200, 200, 200};
     float fogTimer_ = 0.0f;
+    float groundScrollOffset_ = 0.0f;
     std::vector<GrayscaleBuilding> citySilhouette_;
 };
 

@@ -6,6 +6,7 @@
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/CircleShape.hpp>
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 
 void DesertNightLevel::init(AssetManager& assets, GameState& state) {
@@ -20,6 +21,12 @@ void DesertNightLevel::init(AssetManager& assets, GameState& state) {
         parallax_.addLayer(assets.getTexture("ground"), 1.0f, Constants::GROUND_Y);
     }
     parallax_.setScrollDirection(1.0f);
+
+    // Generate star positions and brightness levels
+    starsGenerated_ = false;
+    starPositions_.clear();
+    starBrightness_.clear();
+
     spawnObstacles(state, assets);
 }
 
@@ -27,6 +34,9 @@ void DesertNightLevel::update(float deltaTime, AssetManager& assets, GameState& 
     parallax_.setScrollDirection(state.currentSpeed);
     std::vector<Entity*> emptyVec;
     parallax_.update(deltaTime, emptyVec);
+
+    // Mars subtle pulsing
+    marsPhase_ += deltaTime * 0.5f;
 
     // Fireflies
     fireflyTimer_ += deltaTime;
@@ -49,36 +59,151 @@ void DesertNightLevel::update(float deltaTime, AssetManager& assets, GameState& 
 }
 
 void DesertNightLevel::render(sf::RenderWindow& window) {
+    /// --- Sky background ---
     sf::RectangleShape sky(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT));
     sky.setFillColor(skyColor_);
     window.draw(sky);
 
-    // Stars
-    static bool starsGenerated = false;
-    static std::vector<sf::Vector2f> stars;
-    if (!starsGenerated) {
-        for (int i = 0; i < 100; i++) {
-            stars.push_back(sf::Vector2f(
+    /// --- Stars (generated once, with varying brightness) ---
+    if (!starsGenerated_) {
+        starPositions_.clear();
+        starBrightness_.clear();
+        for (int i = 0; i < 120; i++) {
+            starPositions_.push_back(sf::Vector2f(
                 static_cast<float>(std::rand() % Constants::WINDOW_WIDTH),
-                static_cast<float>(std::rand() % static_cast<int>(Constants::GROUND_Y - 100))));
+                static_cast<float>(std::rand() % static_cast<int>(Constants::GROUND_Y - 120))));
+            // Varied brightness: some dim, some bright
+            starBrightness_.push_back(100 + (std::rand() % 155));
         }
-        starsGenerated = true;
+        starsGenerated_ = true;
     }
 
-    sf::CircleShape star(1.5f);
-    star.setFillColor(sf::Color::White);
-    for (const auto& s : stars) {
-        star.setPosition(s);
+    for (size_t i = 0; i < starPositions_.size(); i++) {
+        float brightness = static_cast<float>(starBrightness_[i]);
+        float radius = (brightness > 200.0f) ? 2.0f : 1.2f;
+        sf::CircleShape star(radius);
+        int b = static_cast<int>(brightness);
+        star.setFillColor(sf::Color(b, b, b));
+        star.setPosition(starPositions_[i]);
         window.draw(star);
     }
 
+    /// --- Moon with eclipse (crescent/partially shadowed) ---
+    // Outer glow
+    sf::CircleShape moonGlow(moonRadius_ * 2.5f);
+    moonGlow.setFillColor(sf::Color(200, 200, 220, 20));
+    moonGlow.setPosition(moonPos_.x - moonRadius_ * 2.5f,
+                         moonPos_.y - moonRadius_ * 2.5f);
+    window.draw(moonGlow);
+
+    // Medium glow
+    sf::CircleShape moonGlow2(moonRadius_ * 1.6f);
+    moonGlow2.setFillColor(sf::Color(200, 200, 220, 40));
+    moonGlow2.setPosition(moonPos_.x - moonRadius_ * 1.6f,
+                          moonPos_.y - moonRadius_ * 1.6f);
+    window.draw(moonGlow2);
+
+    // Moon base (pale cream)
+    sf::CircleShape moon(moonRadius_);
+    moon.setFillColor(sf::Color(230, 225, 210));
+    moon.setPosition(moonPos_.x - moonRadius_, moonPos_.y - moonRadius_);
+    window.draw(moon);
+
+    // Moon surface details (craters)
+    sf::CircleShape crater1(moonRadius_ * 0.15f);
+    crater1.setFillColor(sf::Color(210, 205, 190));
+    crater1.setPosition(moonPos_.x - moonRadius_ * 0.3f,
+                        moonPos_.y - moonRadius_ * 0.2f);
+    window.draw(crater1);
+
+    sf::CircleShape crater2(moonRadius_ * 0.1f);
+    crater2.setFillColor(sf::Color(215, 210, 195));
+    crater2.setPosition(moonPos_.x + moonRadius_ * 0.15f,
+                        moonPos_.y + moonRadius_ * 0.3f);
+    window.draw(crater2);
+
+    // Eclipse shadow: a circle the same color as the sky, offset to create
+    // a crescent/eclipse effect
+    sf::CircleShape eclipseShadow(moonRadius_);
+    eclipseShadow.setFillColor(skyColor_);
+    eclipseShadow.setPosition(
+        moonPos_.x - moonRadius_ + eclipseOffsetX_,
+        moonPos_.y - moonRadius_ + eclipseOffsetY_);
+    window.draw(eclipseShadow);
+
+    // Second smaller shadow for a more complex eclipse look
+    sf::CircleShape eclipseShadow2(moonRadius_ * 0.7f);
+    eclipseShadow2.setFillColor(skyColor_);
+    eclipseShadow2.setPosition(
+        moonPos_.x - moonRadius_ * 0.7f + eclipseOffsetX_ * 1.4f,
+        moonPos_.y - moonRadius_ * 0.7f + eclipseOffsetY_ * 1.2f);
+    window.draw(eclipseShadow2);
+
+    /// --- Mars (reddish planet) ---
+    // Mars glow
+    sf::CircleShape marsGlow(marsRadius_ * 2.0f);
+    marsGlow.setFillColor(sf::Color(220, 100, 60, 25));
+    marsGlow.setPosition(marsPos_.x - marsRadius_ * 2.0f,
+                         marsPos_.y - marsRadius_ * 2.0f);
+    window.draw(marsGlow);
+
+    // Mars body
+    sf::CircleShape mars(marsRadius_);
+    mars.setFillColor(sf::Color(210, 90, 55));
+    mars.setPosition(marsPos_.x - marsRadius_, marsPos_.y - marsRadius_);
+    window.draw(mars);
+
+    // Mars surface features (darker red patches)
+    float marsPulse = 1.0f + std::sin(marsPhase_) * 0.03f;
+    sf::CircleShape marsSpot1(marsRadius_ * 0.3f * marsPulse);
+    marsSpot1.setFillColor(sf::Color(170, 65, 40));
+    marsSpot1.setPosition(marsPos_.x - marsRadius_ * 0.2f,
+                          marsPos_.y - marsRadius_ * 0.15f);
+    window.draw(marsSpot1);
+
+    sf::CircleShape marsSpot2(marsRadius_ * 0.2f);
+    marsSpot2.setFillColor(sf::Color(180, 75, 45));
+    marsSpot2.setPosition(marsPos_.x + marsRadius_ * 0.15f,
+                          marsPos_.y + marsRadius_ * 0.2f);
+    window.draw(marsSpot2);
+
+    // Mars polar ice cap (small white cap at top)
+    sf::CircleShape marsIce(marsRadius_ * 0.2f);
+    marsIce.setFillColor(sf::Color(230, 210, 200));
+    marsIce.setPosition(marsPos_.x - marsRadius_ * 0.1f,
+                        marsPos_.y - marsRadius_ * 0.7f);
+    window.draw(marsIce);
+
+    // Mars highlight
+    sf::CircleShape marsHighlight(marsRadius_ * 0.15f);
+    marsHighlight.setFillColor(sf::Color(240, 140, 100, 120));
+    marsHighlight.setPosition(marsPos_.x - marsRadius_ * 0.5f,
+                              marsPos_.y - marsRadius_ * 0.4f);
+    window.draw(marsHighlight);
+
+    /// --- Ground ---
     // Draw ground fill below GROUND_Y
     sf::RectangleShape groundFill(sf::Vector2f(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT - Constants::GROUND_Y));
     groundFill.setFillColor(sf::Color(40, 30, 20));
     groundFill.setPosition(0, Constants::GROUND_Y);
     window.draw(groundFill);
 
+    // Ground surface line with subtle dark highlight
+    sf::RectangleShape groundLine(sf::Vector2f(Constants::WINDOW_WIDTH, 2));
+    groundLine.setFillColor(sf::Color(25, 18, 12));
+    groundLine.setPosition(0, Constants::GROUND_Y);
+    window.draw(groundLine);
+
+    // Subtle moon reflection on the ground (faint horizontal band)
+    sf::RectangleShape moonReflection(sf::Vector2f(Constants::WINDOW_WIDTH, 1));
+    moonReflection.setFillColor(sf::Color(60, 55, 50, 40));
+    moonReflection.setPosition(0, Constants::GROUND_Y + 4);
+    window.draw(moonReflection);
+
+    // Render parallax (clouds + ground texture)
     parallax_.render(window);
+
+    // Fireflies on top
     fireflies_.render(window);
 }
 

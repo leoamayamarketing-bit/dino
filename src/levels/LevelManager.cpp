@@ -55,6 +55,8 @@ std::unique_ptr<Level> LevelManager::createLevel(Constants::LevelType type) {
             return std::make_unique<InfiniteLevel>();
         case Constants::LevelType::GRAYSCALE:
             return std::make_unique<GrayscaleLevel>();
+        case Constants::LevelType::AQUATIC:
+            return std::make_unique<AquaticLevel>();
     }
     return nullptr;
 }

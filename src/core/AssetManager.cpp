@@ -475,6 +475,68 @@ sf::Texture AssetManager::createGroundTexture() {
     return rt.getTexture();
 }
 
+sf::Texture AssetManager::createFishTexture() {
+    // Create a simple fish: elliptical body + tail fin
+    sf::RenderTexture rt;
+    rt.create(50, 24);
+    rt.clear(sf::Color::Transparent);
+
+    sf::Color bodyColor(100, 160, 200);
+    sf::Color darkColor(70, 120, 160);
+    sf::Color finColor(80, 140, 180);
+
+    // Tail fin
+    sf::ConvexShape tail;
+    tail.setPointCount(3);
+    tail.setPoint(0, sf::Vector2f(2, 12));
+    tail.setPoint(1, sf::Vector2f(2, 2));
+    tail.setPoint(2, sf::Vector2f(-6, 7));
+    tail.setFillColor(finColor);
+    rt.draw(tail);
+
+    // Body (ellipse)
+    sf::CircleShape body(10);
+    body.setScale(1.6f, 0.8f);
+    body.setFillColor(bodyColor);
+    body.setPosition(8, 4);
+    rt.draw(body);
+
+    // Belly highlight
+    sf::CircleShape belly(7);
+    belly.setScale(1.4f, 0.5f);
+    belly.setFillColor(sf::Color(140, 200, 230));
+    belly.setPosition(12, 10);
+    rt.draw(belly);
+
+    // Dorsal fin
+    sf::ConvexShape dorsal;
+    dorsal.setPointCount(3);
+    dorsal.setPoint(0, sf::Vector2f(20, 3));
+    dorsal.setPoint(1, sf::Vector2f(26, 3));
+    dorsal.setPoint(2, sf::Vector2f(23, -2));
+    dorsal.setFillColor(darkColor);
+    rt.draw(dorsal);
+
+    // Eye
+    sf::CircleShape eye(2.5f);
+    eye.setFillColor(sf::Color::White);
+    eye.setPosition(30, 7);
+    rt.draw(eye);
+    sf::CircleShape pupil(1.5f);
+    pupil.setFillColor(sf::Color::Black);
+    pupil.setPosition(31, 8);
+    rt.draw(pupil);
+
+    // Mouth line
+    sf::RectangleShape mouth(sf::Vector2f(5, 1));
+    mouth.setFillColor(darkColor);
+    mouth.setPosition(32, 11);
+    rt.draw(mouth);
+
+    rt.display();
+    return rt.getTexture();
+}
+
 sf::Texture AssetManager::createCloudTexture() {
     sf::RenderTexture rt;
     rt.create(120, 50);
@@ -734,6 +796,7 @@ void AssetManager::generateEnvironmentTextures() {
     textures_["ground"] = createGroundTexture();
     textures_["cloud"] = createCloudTexture();
     textures_["particle"] = createParticleTexture();
+    textures_["fish"] = createFishTexture();
 
     // Lava texture
     sf::Texture lavaTex = createRectTexture(64, 12, sf::Color(255, 80, 0));
