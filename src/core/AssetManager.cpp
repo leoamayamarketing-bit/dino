@@ -537,6 +537,61 @@ sf::Texture AssetManager::createFishTexture() {
     return rt.getTexture();
 }
 
+sf::Texture AssetManager::createJellyfishTexture() {
+    // Create a jellyfish: translucent dome + trailing tentacles
+    sf::RenderTexture rt;
+    rt.create(40, 50);
+    rt.clear(sf::Color::Transparent);
+
+    // Translucent dome (bell)
+    sf::CircleShape bell(14);
+    bell.setScale(1.1f, 0.7f);
+    bell.setFillColor(sf::Color(180, 100, 200, 160));  // purple translucent
+    bell.setPosition(6, 4);
+    rt.draw(bell);
+
+    // Inner dome highlight
+    sf::CircleShape inner(8);
+    inner.setScale(0.8f, 0.5f);
+    inner.setFillColor(sf::Color(220, 150, 240, 120));
+    inner.setPosition(11, 10);
+    rt.draw(inner);
+
+    // Tentacles (4 wavy lines)
+    sf::Color tentacleColor(160, 80, 200, 140);
+    for (int t = 0; t < 4; t++) {
+        float tx = 10.0f + t * 7.0f;
+        sf::ConvexShape tentacle;
+        tentacle.setPointCount(6);
+        float baseY = 24.0f;
+        tentacle.setPoint(0, sf::Vector2f(tx, baseY));
+        tentacle.setPoint(1, sf::Vector2f(tx - 2.0f + t * 0.5f, baseY + 8.0f));
+        tentacle.setPoint(2, sf::Vector2f(tx + 1.0f - t * 0.3f, baseY + 14.0f));
+        tentacle.setPoint(3, sf::Vector2f(tx - 1.0f + t * 0.4f, baseY + 20.0f));
+        tentacle.setPoint(4, sf::Vector2f(tx + 0.5f - t * 0.2f, baseY + 25.0f));
+        tentacle.setPoint(5, sf::Vector2f(tx - 0.5f, baseY + 26.0f));
+        tentacle.setFillColor(tentacleColor);
+        rt.draw(tentacle);
+    }
+
+    // Small dots on bell (bioluminescent spots)
+    sf::CircleShape spot1(1.5f);
+    spot1.setFillColor(sf::Color(255, 200, 255, 180));
+    spot1.setPosition(12, 10);
+    rt.draw(spot1);
+    sf::CircleShape spot2(1.2f);
+    spot2.setFillColor(sf::Color(255, 220, 255, 160));
+    spot2.setPosition(20, 12);
+    rt.draw(spot2);
+    sf::CircleShape spot3(1.0f);
+    spot3.setFillColor(sf::Color(255, 200, 255, 140));
+    spot3.setPosition(16, 16);
+    rt.draw(spot3);
+
+    rt.display();
+    return rt.getTexture();
+}
+
 sf::Texture AssetManager::createCloudTexture() {
     sf::RenderTexture rt;
     rt.create(120, 50);
@@ -797,6 +852,7 @@ void AssetManager::generateEnvironmentTextures() {
     textures_["cloud"] = createCloudTexture();
     textures_["particle"] = createParticleTexture();
     textures_["fish"] = createFishTexture();
+    textures_["jellyfish"] = createJellyfishTexture();
 
     // Lava texture
     sf::Texture lavaTex = createRectTexture(64, 12, sf::Color(255, 80, 0));

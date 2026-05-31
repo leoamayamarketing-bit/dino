@@ -75,6 +75,7 @@ private:
     sf::Texture createFireflyTexture();
     sf::Texture createAshTexture();
     sf::Texture createFishTexture();
+    sf::Texture createJellyfishTexture();
 };
 
 #endif

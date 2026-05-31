@@ -199,6 +199,36 @@ void AudioManager::init() {
         buffers_["explosion"] = createSoundBuffer(p);
     }
 
+    // ---------- BUBBLE: short glug/pop (water bubble rising) ----------
+    {
+        SoundParams p;
+        p.duration = 0.12f;
+        p.startFreq = 900.0f;
+        p.endFreq = 1200.0f;
+        p.amplitude = 0.12f;
+        p.noiseAmount = 0.3f;
+        p.attack = 0.002f;
+        p.decay = 0.02f;
+        p.sustainLevel = 0.5f;
+        p.release = 0.03f;
+        buffers_["bubble"] = createSoundBuffer(p);
+    }
+
+    // ---------- SPLASH: water splash (broad noise burst) ----------
+    {
+        SoundParams p;
+        p.duration = 0.3f;
+        p.startFreq = 200.0f;
+        p.endFreq = 400.0f;
+        p.amplitude = 0.25f;
+        p.noiseAmount = 0.7f;
+        p.attack = 0.001f;
+        p.decay = 0.05f;
+        p.sustainLevel = 0.4f;
+        p.release = 0.1f;
+        buffers_["splash"] = createSoundBuffer(p);
+    }
+
     // ---------- LAND: soft thud ----------
     {
         SoundParams p;

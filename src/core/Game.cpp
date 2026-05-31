@@ -392,6 +392,19 @@ void Game::update(float deltaTime) {
                     }),
                 gameState_.entities.end());
 
+            // Ambient sounds for aquatic level
+            if (gameState_.currentLevel == Constants::LevelType::AQUATIC) {
+                static float ambientTimer = 0.0f;
+                ambientTimer += deltaTime;
+                if (ambientTimer > 1.2f) {
+                    ambientTimer = 0.0f;
+                    audioManager_.playSound("bubble");
+                    if (std::rand() % 100 < 20) {
+                        audioManager_.playSound("splash");
+                    }
+                }
+            }
+
             // Update particle system
             particleSystem_.updateParticles(deltaTime);
 

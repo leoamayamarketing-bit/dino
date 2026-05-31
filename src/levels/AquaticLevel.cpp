@@ -49,6 +49,38 @@ void AquaticLevel::init(AssetManager& assets, GameState& state) {
         corals_.push_back(c);
     }
 
+    // Generate kraken tentacles at fixed positions (right side of screen)
+    krakenTentacles_.clear();
+    krakenCollisionIds_.clear();
+    for (int i = 0; i < 4; i++) {
+        KrakenTentacle t;
+        t.x = Constants::WINDOW_WIDTH + 100.0f + i * 200.0f + (std::rand() % 80);
+        t.height = 100.0f + (std::rand() % 100);
+        t.phase = (std::rand() % 100) * 0.01f * 6.2832f;
+        t.baseWidth = 20.0f + (std::rand() % 15);
+        t.timer = 0.0f;
+        t.rising = true;
+        t.currentHeight = 0.0f;
+        t.holdTimer = 0.0f;
+        krakenTentacles_.push_back(t);
+
+        // Create invisible collision entity for this tentacle
+        auto tentacleEntity = std::make_unique<Entity>(2000 + i);
+        tentacleEntity->addComponent<TransformComponent>(-1000.0f, -1000.0f);
+        auto& coll = tentacleEntity->addComponent<CollisionComponent>(
+            sf::FloatRect(0, 0, 1, 1), "enemy");
+        coll.localOffset = sf::Vector2f(-0.5f, 0);
+        coll.isTrigger = false;
+        coll.isStatic = true;
+        coll.damageAmount = 1;
+        krakenCollisionIds_.push_back(state.entities.size());
+        state.entities.push_back(std::move(tentacleEntity));
+    }
+    krakenTimer_ = 0.0f;
+    krakenInterval_ = 10.0f;
+    krakenActive_ = false;
+    jellyfishPhase_ = 0.0f;
+
     spawnObstacles(state, assets);
 }
 
@@ -87,9 +119,91 @@ void AquaticLevel::update(float deltaTime, AssetManager& assets, GameState& stat
         spawnInterval_ = std::max(minSpawnInterval_, spawnInterval_ - (state.hardMode ? 0.08f : 0.04f));
     }
 
+    // Jellyfish bobbing — identified by texture name, not EnemyType
+    jellyfishPhase_ += deltaTime * 2.0f;
+    for (size_t i = 0; i < state.entities.size(); i++) {
+        auto& e = state.entities[i];
+        if (!e || !e->isActive()) continue;
+        auto* sprite = e->getComponent<SpriteComponent>();
+        auto* trans = e->getComponent<TransformComponent>();
+        if (sprite && trans && sprite->textureName == "jellyfish") {
+            // Sine wave vertical bob
+            float bob = std::sin(jellyfishPhase_ * 0.7f + i * 0.8f) * 6.0f;
+            trans->position.y += bob * deltaTime * 2.0f;
+        }
+    }
+
     cleanupOffscreen(state);
     bubbles_.updateParticles(deltaTime);
     lightRays_.updateParticles(deltaTime);
+
+    // Kraken tentacle animation
+    krakenTimer_ += deltaTime;
+    if (krakenTimer_ >= krakenInterval_) {
+        krakenTimer_ = 0.0f;
+        krakenActive_ = true;
+        // Reset all tentacles
+        for (auto& t : krakenTentacles_) {
+            t.rising = true;
+            t.currentHeight = 0.0f;
+            t.holdTimer = 0.0f;
+        }
+    }
+
+    if (krakenActive_) {
+        bool allDone = true;
+        for (size_t i = 0; i < krakenTentacles_.size(); i++) {
+            auto& t = krakenTentacles_[i];
+            if (t.rising) {
+                t.currentHeight += deltaTime * 120.0f;  // rise speed
+                if (t.currentHeight >= t.height) {
+                    t.currentHeight = t.height;
+                    t.rising = false;
+                    t.holdTimer = 0.0f;
+                }
+            } else if (t.holdTimer < 1.5f) {
+                t.holdTimer += deltaTime;  // hold at full height
+            } else {
+                t.currentHeight -= deltaTime * 80.0f;  // descend
+                if (t.currentHeight <= 0.0f) {
+                    t.currentHeight = 0.0f;
+                }
+            }
+
+            // Update collision entity position for this tentacle
+            if (i < krakenCollisionIds_.size()) {
+                size_t idx = krakenCollisionIds_[i];
+                if (idx < state.entities.size()) {
+                    auto& tentacleEntity = state.entities[idx];
+                    auto* trans = tentacleEntity->getComponent<TransformComponent>();
+                    auto* coll = tentacleEntity->getComponent<CollisionComponent>();
+                    if (trans && coll) {
+                        if (t.currentHeight > 30.0f) {
+                            float sway = std::sin(krakenTimer_ * 1.5f + t.phase) * 8.0f;
+                            float colWidth = t.baseWidth * 0.6f;
+                            float colHeight = std::min(t.currentHeight * 0.3f, 60.0f);
+                            trans->position.x = t.x + sway;
+                            trans->position.y = Constants::GROUND_Y - t.currentHeight + 15.0f;
+                            coll->bounds = sf::FloatRect(0, 0, colWidth, colHeight);
+                            coll->localOffset = sf::Vector2f(-colWidth * 0.5f, 0);
+                            tentacleEntity->setActive(true);
+                        } else {
+                            trans->position.x = -1000.0f;
+                            trans->position.y = -1000.0f;
+                            tentacleEntity->setActive(true);  // keep active to avoid cleanup
+                        }
+                    }
+                }
+            }
+
+            if (t.currentHeight > 0.0f) {
+                allDone = false;
+            }
+        }
+        if (allDone) {
+            krakenActive_ = false;
+        }
+    }
 }
 
 void AquaticLevel::render(sf::RenderWindow& window) {
@@ -195,6 +309,52 @@ void AquaticLevel::render(sf::RenderWindow& window) {
 
     /// --- Bubbles (on top of everything) ---
     bubbles_.render(window);
+
+    /// --- Kraken tentacles (drawn on top) ---
+    if (krakenActive_) {
+        for (auto& t : krakenTentacles_) {
+            if (t.currentHeight <= 0.0f) continue;
+            float sway = std::sin(krakenTimer_ * 1.5f + t.phase) * 8.0f;
+            // Tentacle body (tapered rectangle)
+            float tipWidth = t.baseWidth * 0.3f;
+            int segments = 6;
+            float segH = t.currentHeight / segments;
+            for (int j = 0; j < segments; j++) {
+                float segT = static_cast<float>(j) / segments;
+                float w = t.baseWidth - (t.baseWidth - tipWidth) * segT;
+                float segSway = sway * (1.0f - segT * 0.5f);
+                sf::RectangleShape segment(sf::Vector2f(w, segH + 2));
+                // Dark green/mottled color with gradient
+                sf::Color segColor(
+                    static_cast<sf::Uint8>(25 + 30 * segT),
+                    static_cast<sf::Uint8>(50 + 20 * segT),
+                    static_cast<sf::Uint8>(40 + 15 * segT));
+                segment.setFillColor(segColor);
+                float sx = t.x + segSway - w * 0.5f;
+                float sy = Constants::GROUND_Y - t.currentHeight + j * segH;
+                segment.setPosition(sx, sy);
+                window.draw(segment);
+            }
+            // Tentacle tip (rounded)
+            sf::CircleShape tip(tipWidth * 0.8f);
+            tip.setFillColor(sf::Color(40, 60, 50));
+            float tipSway = sway * 0.8f;
+            tip.setPosition(t.x + tipSway - tipWidth * 0.8f,
+                           Constants::GROUND_Y - t.currentHeight - tipWidth * 0.5f);
+            window.draw(tip);
+
+            // Suction cup highlights on tentacle
+            for (int s = 0; s < 3; s++) {
+                float st = 0.25f + s * 0.2f;
+                float sy = Constants::GROUND_Y - t.currentHeight * (1.0f - st);
+                float sx = t.x + sway * (1.0f - st * 0.5f);
+                sf::CircleShape sucker(2.5f);
+                sucker.setFillColor(sf::Color(60, 80, 65));
+                sucker.setPosition(sx - 2.5f, sy - 2.5f);
+                window.draw(sucker);
+            }
+        }
+    }
 }
 
 void AquaticLevel::spawnObstacles(GameState& state, AssetManager& assets) {
@@ -243,6 +403,32 @@ void AquaticLevel::spawnObstacles(GameState& state, AssetManager& assets) {
         // Ground fish (swimming near the seabed)
         auto fish = createFish(startX, Constants::GROUND_Y - 30, 1.2f, false);
         state.entities.push_back(std::move(fish));
+    } else if (roll < 45) {
+        // Jellyfish (floating enemy, mid-water)
+        static uint32_t jellyId = 600;
+        auto jelly = std::make_unique<Entity>(jellyId++);
+        float jy = Constants::GROUND_Y - 120 - (std::rand() % 80);
+        jelly->addComponent<TransformComponent>(startX, jy);
+        auto& jSprite = jelly->addComponent<SpriteComponent>("jellyfish");
+        if (assets.hasTexture("jellyfish")) {
+            jSprite.setTexture(assets.getTexture("jellyfish"));
+        } else if (assets.hasTexture("fish")) {
+            jSprite.setTexture(assets.getTexture("fish"));
+        }
+        jSprite.zOrder = 5;
+        jSprite.sprite.setOrigin(20.0f, 25.0f);
+        float jscale = 0.8f + (std::rand() % 5) * 0.1f;
+        jSprite.sprite.setScale(jscale, jscale);
+        // Collision: dome shape
+        auto& jColl = jelly->addComponent<CollisionComponent>(
+            sf::FloatRect(0, 0, 30 * jscale, 25 * jscale), "enemy");
+        jColl.localOffset = sf::Vector2f(-15.0f * jscale, -12.0f * jscale);
+        jColl.isTrigger = false;
+        jColl.isStatic = true;
+        jColl.damageAmount = 1;
+        // Use SMALL_CACTUS type to avoid EnemyAISystem altitude bobbing (handled manually in update)
+        jelly->addComponent<EnemyComponent>(Constants::EnemyType::SMALL_CACTUS);
+        state.entities.push_back(std::move(jelly));
     } else if (roll < 55) {
         // Mid-water fish
         auto fish = createFish(startX, Constants::GROUND_Y - 100 - (std::rand() % 60), 1.0f, false);

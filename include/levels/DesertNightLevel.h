@@ -13,10 +13,8 @@ public:
 
 private:
     ParallaxSystem parallax_;
-    ParticleSystem fireflies_;
     sf::Color skyColor_{26, 26, 46};
     sf::Color groundColor_{45, 45, 68};
-    float fireflyTimer_ = 0.0f;
 
     // Moon with eclipse
     sf::Vector2f moonPos_{900.0f, 100.0f};
@@ -29,10 +27,12 @@ private:
     float marsRadius_ = 14.0f;
     float marsPhase_ = 0.0f;  // for subtle pulsing
 
-    // Stars
+    // Background decorative stars with twinkle
     bool starsGenerated_ = false;
     std::vector<sf::Vector2f> starPositions_;
     std::vector<float> starBrightness_;
+    std::vector<float> starPhase_;   // per-star phase offset for twinkle
+    float starTwinkleTimer_ = 0.0f;
 };
 
 #endif

@@ -22,10 +22,12 @@ void DesertNightLevel::init(AssetManager& assets, GameState& state) {
     }
     parallax_.setScrollDirection(1.0f);
 
-    // Generate star positions and brightness levels
+    // Generate star positions, brightness levels, and twinkle phases
     starsGenerated_ = false;
     starPositions_.clear();
     starBrightness_.clear();
+    starPhase_.clear();
+    starTwinkleTimer_ = 0.0f;
 
     spawnObstacles(state, assets);
 }
@@ -38,15 +40,8 @@ void DesertNightLevel::update(float deltaTime, AssetManager& assets, GameState& 
     // Mars subtle pulsing
     marsPhase_ += deltaTime * 0.5f;
 
-    // Fireflies
-    fireflyTimer_ += deltaTime;
-    if (fireflyTimer_ > 0.3f) {
-        fireflyTimer_ = 0.0f;
-        fireflies_.emit(
-            sf::Vector2f(static_cast<float>(std::rand() % Constants::WINDOW_WIDTH),
-                         Constants::GROUND_Y - 100),
-            2, sf::Color(200, 255, 100, 200), 30.0f, 2.0f, 3.0f);
-    }
+    // Star twinkle timer
+    starTwinkleTimer_ += deltaTime;
 
     spawnTimer_ += deltaTime;
     if (spawnTimer_ >= spawnInterval_) {
@@ -68,22 +63,30 @@ void DesertNightLevel::render(sf::RenderWindow& window) {
     if (!starsGenerated_) {
         starPositions_.clear();
         starBrightness_.clear();
+        starPhase_.clear();
         for (int i = 0; i < 120; i++) {
             starPositions_.push_back(sf::Vector2f(
                 static_cast<float>(std::rand() % Constants::WINDOW_WIDTH),
                 static_cast<float>(std::rand() % static_cast<int>(Constants::GROUND_Y - 120))));
             // Varied brightness: some dim, some bright
             starBrightness_.push_back(100 + (std::rand() % 155));
+            // Random phase offset for twinkle animation
+            starPhase_.push_back((std::rand() % 1000) * 0.001f * 6.2832f);
         }
         starsGenerated_ = true;
     }
 
     for (size_t i = 0; i < starPositions_.size(); i++) {
-        float brightness = static_cast<float>(starBrightness_[i]);
-        float radius = (brightness > 200.0f) ? 2.0f : 1.2f;
+        float baseBrightness = static_cast<float>(starBrightness_[i]);
+        // Twinkle: brightness oscillates with a gentle sine wave
+        float twinkle = 0.7f + 0.3f * std::sin(starTwinkleTimer_ * 0.8f + starPhase_[i]);
+        float brightness = baseBrightness * twinkle;
+        float radius = (baseBrightness > 200.0f) ? 2.0f : 1.2f;
+        if (brightness > 180.0f) radius = std::max(radius, 2.0f); // brighter stars appear larger
         sf::CircleShape star(radius);
-        int b = static_cast<int>(brightness);
-        star.setFillColor(sf::Color(b, b, b));
+        int b = static_cast<int>(std::clamp(brightness, 0.0f, 255.0f));
+        int alpha = static_cast<int>(std::clamp(brightness, 30.0f, 255.0f));
+        star.setFillColor(sf::Color(b, b, b, alpha));
         star.setPosition(starPositions_[i]);
         window.draw(star);
     }
@@ -203,8 +206,7 @@ void DesertNightLevel::render(sf::RenderWindow& window) {
     // Render parallax (clouds + ground texture)
     parallax_.render(window);
 
-    // Fireflies on top
-    fireflies_.render(window);
+
 }
 
 void DesertNightLevel::spawnObstacles(GameState& state, AssetManager& assets) {

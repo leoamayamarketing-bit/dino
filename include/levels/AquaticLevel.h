@@ -44,6 +44,28 @@ private:
     sf::Color shallowColor_{20, 100, 160};   // lighter blue at top
     sf::Color deepColor_{5, 30, 60};         // darker blue at bottom
     sf::Color groundColor_{60, 70, 50};      // sandy/dark seabed
+
+    // Kraken tentacle data
+    struct KrakenTentacle {
+        float x;
+        float height;
+        float phase;       // animation phase
+        float baseWidth;
+        float timer = 0.0f;
+        bool rising = true;
+        float currentHeight = 0.0f;
+        float holdTimer = 0.0f;
+    };
+    std::vector<KrakenTentacle> krakenTentacles_;
+    float krakenTimer_ = 0.0f;
+    float krakenInterval_ = 8.0f;
+    bool krakenActive_ = false;
+
+    // Jellyfish phase for pulsing animation
+    float jellyfishPhase_ = 0.0f;
+
+    // Kraken collision entity indices (into GameState::entities)
+    std::vector<size_t> krakenCollisionIds_;
 };
 
 #endif
