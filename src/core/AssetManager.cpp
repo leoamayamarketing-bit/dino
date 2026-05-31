@@ -591,6 +591,18 @@ static void replaceWhiteWithColor(sf::Texture& tex, const sf::Color& fillColor) 
             }
         }
     }
+
+    // Force edge columns to the fill color so tiling copies are seamless.
+    // The leftmost and rightmost pixel columns of piso.png (903px wide)
+    // often have near-white residuals that create visible seams between
+    // sprite copies when the parallax offsets cross the tile boundary.
+    unsigned w = img.getSize().x;
+    unsigned h = img.getSize().y;
+    for (unsigned y = 0; y < h; ++y) {
+        img.setPixel(0, y, fillColor);      // left edge
+        img.setPixel(w - 1, y, fillColor);  // right edge
+    }
+
     tex.loadFromImage(img);
 }
 
