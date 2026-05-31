@@ -62,6 +62,19 @@ private:
     float krakenInterval_ = 8.0f;
     bool krakenActive_ = false;
 
+    // Lateral tentacles (attack from left/right edges)
+    enum TentacleSide { LEFT_SIDE = 0, RIGHT_SIDE = 1 };
+    struct LateralTentacle {
+        float y;             // vertical position on the edge
+        float length;        // how far it extends inward
+        float phase;         // animation phase offset
+        float baseWidth;     // thickness at base
+        TentacleSide side;   // LEFT_SIDE or RIGHT_SIDE
+        float currentLength = 0.0f;
+    };
+    std::vector<LateralTentacle> lateralTentacles_;
+    std::vector<size_t> lateralCollisionIds_;
+
     // Jellyfish phase for pulsing animation
     float jellyfishPhase_ = 0.0f;
 

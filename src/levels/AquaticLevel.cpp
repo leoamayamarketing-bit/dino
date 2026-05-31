@@ -84,6 +84,32 @@ void AquaticLevel::init(AssetManager& assets, GameState& state) {
         krakenCollisionIds_.push_back(state.entities.size());
         state.entities.push_back(std::move(tentacleEntity));
     }
+    // Generate lateral tentacles (attack from left/right edges)
+    lateralTentacles_.clear();
+    lateralCollisionIds_.clear();
+    // 2 tentacles on each side at different heights
+    for (int i = 0; i < 4; i++) {
+        LateralTentacle lt;
+        lt.side = (i < 2) ? LEFT_SIDE : RIGHT_SIDE;
+        lt.y = 80.0f + (std::rand() % 250);  // varied heights in mid/upper water
+        lt.length = 120.0f + (std::rand() % 100);
+        lt.phase = (std::rand() % 100) * 0.01f * 6.2832f;
+        lt.baseWidth = 14.0f + (std::rand() % 12);
+        lateralTentacles_.push_back(lt);
+
+        // Create invisible collision entity for this lateral tentacle
+        auto latEntity = std::make_unique<Entity>(3000 + i);
+        latEntity->addComponent<TransformComponent>(-1000.0f, -1000.0f);
+        auto& latColl = latEntity->addComponent<CollisionComponent>(
+            sf::FloatRect(0, 0, 1, 1), "enemy");
+        latColl.localOffset = sf::Vector2f(-0.5f, 0);
+        latColl.isTrigger = false;
+        latColl.isStatic = true;
+        latColl.damageAmount = 1;
+        lateralCollisionIds_.push_back(state.entities.size());
+        state.entities.push_back(std::move(latEntity));
+    }
+
     krakenTimer_ = 0.0f;
     krakenInterval_ = 10.0f;
     krakenActive_ = false;
@@ -262,6 +288,70 @@ void AquaticLevel::update(float deltaTime, AssetManager& assets, GameState& stat
                 allDone = false;
             }
         }
+
+        // --- Animate lateral tentacles (from left/right edges) ---
+        float latOffset = 0.5f;  // lateral tentacles start with slight delay
+        for (size_t i = 0; i < lateralTentacles_.size(); i++) {
+            auto& lt = lateralTentacles_[i];
+            float localTime = krakenTimer_ - latOffset * (lt.side == LEFT_SIDE ? 0.3f : 0.6f);
+            if (localTime < 0.0f) localTime = 0.0f;
+
+            // First 1.5s: extend inward
+            float extendDuration = 0.8f;
+            float holdDuration = 1.2f;
+            float retractDuration = 1.5f;
+
+            if (localTime < extendDuration) {
+                // Extending
+                lt.currentLength = lt.length * (localTime / extendDuration);
+            } else if (localTime < extendDuration + holdDuration) {
+                // Holding
+                lt.currentLength = lt.length;
+            } else if (localTime < extendDuration + holdDuration + retractDuration) {
+                // Retracting
+                float retractT = (localTime - extendDuration - holdDuration) / retractDuration;
+                lt.currentLength = lt.length * (1.0f - retractT);
+            } else {
+                lt.currentLength = 0.0f;
+            }
+
+            // Determine if this tentacle is a threat (extended enough)
+            float threatThreshold = lt.length * 0.3f;
+
+            // Update collision entity for this lateral tentacle
+            if (i < lateralCollisionIds_.size()) {
+                size_t idx = lateralCollisionIds_[i];
+                if (idx < state.entities.size()) {
+                    auto& latEntity = state.entities[idx];
+                    auto* trans = latEntity->getComponent<TransformComponent>();
+                    auto* coll = latEntity->getComponent<CollisionComponent>();
+                    if (trans && coll) {
+                        if (lt.currentLength > threatThreshold) {
+                            // Position collision at the tip of the tentacle
+                            float tipX = (lt.side == LEFT_SIDE)
+                                ? lt.currentLength
+                                : Constants::WINDOW_WIDTH - lt.currentLength;
+                            float tipY = lt.y;
+                            float colSize = lt.baseWidth * 0.7f;
+                            trans->position.x = tipX - colSize * 0.5f;
+                            trans->position.y = tipY - colSize * 0.5f;
+                            coll->bounds = sf::FloatRect(0, 0, colSize, colSize);
+                            coll->localOffset = sf::Vector2f(0, 0);
+                            latEntity->setActive(true);
+                        } else {
+                            trans->position.x = -1000.0f;
+                            trans->position.y = -1000.0f;
+                            latEntity->setActive(true);
+                        }
+                    }
+                }
+            }
+
+            if (lt.currentLength > 0.0f) {
+                allDone = false;
+            }
+        }
+
         if (allDone) {
             krakenActive_ = false;
         }
@@ -474,6 +564,53 @@ void AquaticLevel::render(sf::RenderWindow& window) {
                 sucker.setPosition(sx - 2.5f, sy - 2.5f);
                 window.draw(sucker);
             }
+        }
+
+        // --- Render lateral tentacles (from left/right edges) ---
+        for (auto& lt : lateralTentacles_) {
+            if (lt.currentLength <= 0.0f) continue;
+
+            float amp = std::sin(krakenTimer_ * 2.0f + lt.phase) * 6.0f;
+            float tipWidth = lt.baseWidth * 0.3f;
+            int segments = 5;
+            float segL = lt.currentLength / segments;
+
+            for (int j = 0; j < segments; j++) {
+                float segT = static_cast<float>(j) / segments;
+                float w = lt.baseWidth - (lt.baseWidth - tipWidth) * segT;
+                // Wavy undulation: stronger at the tip
+                float waveAmp = amp * (0.3f + segT * 0.7f);
+
+                sf::RectangleShape segment(sf::Vector2f(segL + 2, w));
+                sf::Color segColor(
+                    static_cast<sf::Uint8>(30 + 25 * segT),
+                    static_cast<sf::Uint8>(55 + 15 * segT),
+                    static_cast<sf::Uint8>(45 + 10 * segT));
+                segment.setFillColor(segColor);
+
+                if (lt.side == LEFT_SIDE) {
+                    // Extending from left edge to the right
+                    float sx = -segL + j * segL;
+                    float sy = lt.y + waveAmp;
+                    segment.setPosition(sx, sy - w * 0.5f);
+                } else {
+                    // Extending from right edge to the left
+                    float sx = Constants::WINDOW_WIDTH - j * segL;
+                    float sy = lt.y + waveAmp;
+                    segment.setPosition(sx, sy - w * 0.5f);
+                }
+                window.draw(segment);
+            }
+
+            // Tip of lateral tentacle (rounded circle)
+            float tipX = (lt.side == LEFT_SIDE)
+                ? lt.currentLength - tipWidth * 0.5f
+                : Constants::WINDOW_WIDTH - lt.currentLength - tipWidth * 0.5f;
+            float tipWave = amp * 0.8f;
+            sf::CircleShape latTip(tipWidth * 0.6f);
+            latTip.setFillColor(sf::Color(40, 60, 50));
+            latTip.setPosition(tipX, lt.y + tipWave - tipWidth * 0.6f);
+            window.draw(latTip);
         }
     }
 }
