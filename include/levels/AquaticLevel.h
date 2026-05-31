@@ -28,6 +28,7 @@ private:
     ParallaxSystem parallax_;
     ParticleSystem bubbles_;
     ParticleSystem lightRays_;
+    ParticleSystem seaDust_;    // sparkling suspended particles in light rays
 
     // Seaweed blades (generated once in init())
     std::vector<Seaweed> seaweeds_;
@@ -66,6 +67,25 @@ private:
 
     // Kraken collision entity indices (into GameState::entities)
     std::vector<size_t> krakenCollisionIds_;
+
+    // Surface wave animation
+    float waveTimer_ = 0.0f;
+
+    // Sea dust sparkle timer
+    float dustTimer_ = 0.0f;
+    float lightRayPositions_[4] = {};  // ring buffer of recent light ray X coords
+    int lightRayIndex_ = 0;
+
+    // Caustic light patterns on seabed
+    struct Caustic {
+        float x;
+        float size;
+        float phase;
+        float speed;
+        float alpha;
+    };
+    std::vector<Caustic> caustics_;
+    float causticTimer_ = 0.0f;
 };
 
 #endif

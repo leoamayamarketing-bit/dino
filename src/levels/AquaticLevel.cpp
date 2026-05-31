@@ -25,6 +25,14 @@ void AquaticLevel::init(AssetManager& assets, GameState& state) {
     }
     parallax_.setScrollDirection(1.0f);
 
+    // Configure particle physics for underwater feel:
+    // Bubbles: negative gravity (buoyancy) so they rise upward
+    bubbles_.setGravity(-35.0f);
+    // Light rays: near-zero gravity so they drift slowly and fade gracefully
+    lightRays_.setGravity(5.0f);
+    // Sea dust: very gentle drift, sparkles suspended in water
+    seaDust_.setGravity(-2.0f);
+
     // Generate seaweed blades — varied heights and colors
     seaweeds_.clear();
     for (int i = 0; i < 14; i++) {
@@ -81,7 +89,21 @@ void AquaticLevel::init(AssetManager& assets, GameState& state) {
     krakenActive_ = false;
     jellyfishPhase_ = 0.0f;
 
+    // Generate caustic light patches on the seabed
+    caustics_.clear();
+    for (int i = 0; i < 18; i++) {
+        Caustic c;
+        c.x = static_cast<float>(std::rand() % Constants::WINDOW_WIDTH);
+        c.size = 20.0f + (std::rand() % 35);
+        c.phase = (std::rand() % 100) * 0.01f * 6.2832f;
+        c.speed = 0.4f + (std::rand() % 5) * 0.1f;
+        c.alpha = 15.0f + (std::rand() % 25);
+        caustics_.push_back(c);
+    }
+    causticTimer_ = 0.0f;
+
     spawnObstacles(state, assets);
+
 }
 
 void AquaticLevel::update(float deltaTime, AssetManager& assets, GameState& state) {
@@ -106,10 +128,36 @@ void AquaticLevel::update(float deltaTime, AssetManager& assets, GameState& stat
     if (lightRayTimer_ > 0.08f) {
         lightRayTimer_ = 0.0f;
         float lx = static_cast<float>(std::rand() % Constants::WINDOW_WIDTH);
+        // Track recent light ray X positions for sea dust clustering
+        lightRayPositions_[lightRayIndex_++ % 4] = lx;
         lightRays_.emit(
             sf::Vector2f(lx, 0.0f),
             1, sf::Color(200, 230, 255, 20), 15.0f, 1.2f, 6.0f);
     }
+
+    // Sea dust sparkles (suspended particles glittering in light rays)
+    dustTimer_ += deltaTime;
+    if (dustTimer_ > 0.12f) {
+        dustTimer_ = 0.0f;
+        // Cluster dust near recent light ray X positions so sparkles appear within shafts
+        float dx = lightRayPositions_[std::rand() % 4];
+        if (dx == 0.0f) dx = static_cast<float>(std::rand() % Constants::WINDOW_WIDTH);
+        dx += (std::rand() % 60 - 30);  // slight spread around the shaft
+        float dy = 50.0f + static_cast<float>(std::rand() % static_cast<int>(Constants::GROUND_Y - 160));  // mid-water
+        // Random warm-gold to cool-white sparkle
+        int hue = std::rand() % 3;
+        sf::Color dustColor;
+        if (hue == 0)      dustColor = sf::Color(255, 255, 230, 120);  // warm white
+        else if (hue == 1) dustColor = sf::Color(220, 240, 255, 100);  // cool white
+        else               dustColor = sf::Color(255, 250, 200, 80);   // gold
+        float dustSize = 1.5f + (std::rand() % 3) * 0.8f;
+        seaDust_.emit(
+            sf::Vector2f(dx, dy),
+            1, dustColor, 8.0f, 1.8f + (std::rand() % 5) * 0.2f, dustSize);
+    }
+
+    // Surface wave animation
+    waveTimer_ += deltaTime * 1.5f;
 
     // Obstacle spawning
     spawnTimer_ += deltaTime;
@@ -120,6 +168,19 @@ void AquaticLevel::update(float deltaTime, AssetManager& assets, GameState& stat
     }
 
     // Jellyfish bobbing — identified by texture name, not EnemyType
+    // Animate caustic light patterns on seabed
+    causticTimer_ += deltaTime * 1.2f;
+    float scrollSpeed = state.currentSpeed * deltaTime * 0.15f;
+    for (auto& c : caustics_) {
+        // Slow horizontal drift opposite to game scroll, then wrap
+        c.x -= scrollSpeed;
+        if (c.x < -c.size) c.x += Constants::WINDOW_WIDTH + c.size * 2;
+        // Undulating shimmer using sin
+        float wave = std::sin(causticTimer_ * c.speed + c.phase);
+        // Slight horizontal jitter
+        c.x += wave * 0.3f * deltaTime * 30.0f;
+    }
+
     jellyfishPhase_ += deltaTime * 2.0f;
     for (size_t i = 0; i < state.entities.size(); i++) {
         auto& e = state.entities[i];
@@ -136,6 +197,7 @@ void AquaticLevel::update(float deltaTime, AssetManager& assets, GameState& stat
     cleanupOffscreen(state);
     bubbles_.updateParticles(deltaTime);
     lightRays_.updateParticles(deltaTime);
+    seaDust_.updateParticles(deltaTime);
 
     // Kraken tentacle animation
     krakenTimer_ += deltaTime;
@@ -222,6 +284,30 @@ void AquaticLevel::render(sf::RenderWindow& window) {
         window.draw(stripe);
     }
 
+    /// --- Surface waves (undulating horizontal lines at water surface) ---
+    {
+        int waveCount = 5;
+        float baseY = 25.0f;
+        for (int w = 0; w < waveCount; w++) {
+            float wavePhase = waveTimer_ + w * 1.8f;
+            float yOffset = std::sin(wavePhase) * 5.0f;
+            float yPos = baseY + w * 7.0f + yOffset;
+            float alphaBase = 25 + w * 15;
+            // Each wave line is drawn as a series of short segments with varying alpha
+            for (int seg = 0; seg < 20; seg++) {
+                float segX = seg * (Constants::WINDOW_WIDTH / 20.0f);
+                float segPhase = waveTimer_ * 0.6f + seg * 0.5f + w * 0.9f;
+                float segY = yPos + std::sin(segPhase) * 4.0f;
+                float segAlpha = alphaBase + 20.0f * (0.5f + 0.5f * std::sin(segPhase * 1.3f));
+                sf::Uint8 a = static_cast<sf::Uint8>(std::clamp(segAlpha, 0.0f, 100.0f));
+                sf::RectangleShape waveSeg(sf::Vector2f(Constants::WINDOW_WIDTH / 20.0f + 4, 1.5f));
+                waveSeg.setFillColor(sf::Color(220, 240, 255, a));
+                waveSeg.setPosition(segX, segY);
+                window.draw(waveSeg);
+            }
+        }
+    }
+
     /// --- Light rays (sun shafts through water) ---
     lightRays_.render(window);
 
@@ -306,6 +392,41 @@ void AquaticLevel::render(sf::RenderWindow& window) {
 
     // Render parallax (clouds)
     parallax_.render(window);
+
+    /// --- Caustic light patterns on the seabed ---
+    {
+        float baseY = Constants::GROUND_Y;
+        for (const auto& c : caustics_) {
+            float shimmer = 0.5f + 0.5f * std::sin(causticTimer_ * c.speed + c.phase);
+            float currentAlpha = c.alpha * (0.6f + 0.4f * shimmer);
+            sf::Uint8 a = static_cast<sf::Uint8>(std::clamp(currentAlpha, 0.0f, 80.0f));
+
+            // Elongated ellipse-like shape for the caustic patch
+            sf::RectangleShape patch(sf::Vector2f(c.size * 2.2f, c.size * 0.6f));
+            patch.setOrigin(c.size * 1.1f, c.size * 0.3f);  // center origin for natural rotation
+            // Soft light yellow-white color
+            patch.setFillColor(sf::Color(180, 210, 230, a));
+            patch.setPosition(c.x, baseY - c.size * 0.3f);
+
+            // Slight rotation for natural look
+            float angle = std::sin(causticTimer_ * c.speed * 0.7f + c.phase * 1.3f) * 20.0f;
+            patch.setRotation(angle);
+
+            window.draw(patch);
+
+            // Secondary smaller highlight
+            sf::Uint8 a2 = static_cast<sf::Uint8>(std::clamp(currentAlpha * 0.5f, 0.0f, 40.0f));
+            sf::RectangleShape highlight(sf::Vector2f(c.size * 0.7f, c.size * 0.3f));
+            highlight.setOrigin(c.size * 0.35f, c.size * 0.15f);  // center origin
+            highlight.setFillColor(sf::Color(210, 235, 255, a2));
+            highlight.setPosition(c.x, baseY - c.size * 0.1f);
+            highlight.setRotation(angle * 0.5f);
+            window.draw(highlight);
+        }
+    }
+
+    /// --- Sea dust sparkles (glittering particles suspended in light) ---
+    seaDust_.render(window);
 
     /// --- Bubbles (on top of everything) ---
     bubbles_.render(window);

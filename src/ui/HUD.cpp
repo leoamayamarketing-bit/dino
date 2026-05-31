@@ -234,9 +234,10 @@ void HUD::updateCoinsAndHealth(const GameState& state) {
     ss << state.coins;
     coinsValueText_.setString(ss.str());
 
-    // Position coins on the right side (right-aligned)
+    // Position coins at 72% of screen width (25% toward center from right edge)
+    // to avoid clumping with health hearts on the far right
     sf::FloatRect coinBounds = coinsValueText_.getGlobalBounds();
-    float coinRightX = Constants::WINDOW_WIDTH - 20.0f - coinBounds.width;
+    float coinRightX = Constants::WINDOW_WIDTH * 0.72f - coinBounds.width;
     coinsValueText_.setPosition(coinRightX, 16.0f);
     coinsLabelText_.setPosition(coinRightX, 4.0f);
 

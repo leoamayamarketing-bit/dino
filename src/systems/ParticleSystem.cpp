@@ -76,7 +76,7 @@ void ParticleSystem::updateParticles(float dt) {
     for (auto& p : particles_) {
         if (!p.active) continue;
         p.position += p.velocity * dt;
-        p.velocity.y += 100.0f * dt; // gravity on particles
+        p.velocity.y += gravity_ * dt; // gravity on particles (negative = buoyancy)
         p.lifetime -= dt;
         if (p.lifetime <= 0.0f) {
             p.active = false;

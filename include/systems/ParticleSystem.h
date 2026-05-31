@@ -35,12 +35,15 @@ public:
         if (tex) texSize_ = static_cast<sf::Vector2f>(tex->getSize());
     }
 
+    void setGravity(float g) { gravity_ = g; }
+
     void updateParticles(float dt);
 
 private:
     std::vector<Particle> particles_;
     sf::Texture* texture_ = nullptr;
     sf::VertexArray vertexArray_;
+    float gravity_ = 100.0f;  // default gravity (px/s²), negative = buoyancy
 
     sf::Vector2f texSize_{8.0f, 8.0f}; // cached texture size for texCoords
 };
