@@ -30,11 +30,14 @@ void CollisionSystem::update(float, std::vector<Entity*>& entities) {
 
             currentCollisions.push_back({a, b});
 
-            // Fire callbacks
+            // Fire callbacks with correct argument order
             for (const auto& rule : collisionRules_) {
-                if ((rule.tagA == ca->tag && rule.tagB == cb->tag) ||
-                    (rule.tagA == cb->tag && rule.tagB == ca->tag)) {
+                if (rule.tagA == ca->tag && rule.tagB == cb->tag) {
+                    // a has tagA, b has tagB — callback(a, b) matches declaration
                     rule.callback(a, b);
+                } else if (rule.tagA == cb->tag && rule.tagB == ca->tag) {
+                    // b has tagA, a has tagB — callback(b, a) swaps back
+                    rule.callback(b, a);
                 }
             }
         }

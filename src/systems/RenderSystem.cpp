@@ -9,8 +9,10 @@ RenderSystem::RenderSystem(sf::RenderWindow& window)
     : window_(window) {}
 
 void RenderSystem::update(float, std::vector<Entity*>& entities) {
-    // Sort by z-order
-    std::sort(entities.begin(), entities.end(), [](Entity* a, Entity* b) {
+    // Copy the entity list so we can sort by z-order without mutating
+    // the original vector (which would break CollisionSystem's nested loop).
+    auto sorted = entities;
+    std::sort(sorted.begin(), sorted.end(), [](Entity* a, Entity* b) {
         auto* sa = a->getComponent<SpriteComponent>();
         auto* sb = b->getComponent<SpriteComponent>();
         int za = sa ? sa->zOrder : 0;
@@ -18,7 +20,7 @@ void RenderSystem::update(float, std::vector<Entity*>& entities) {
         return za < zb;
     });
 
-    for (auto* entity : entities) {
+    for (auto* entity : sorted) {
         auto* sprite = entity->getComponent<SpriteComponent>();
         auto* transform = entity->getComponent<TransformComponent>();
         auto* anim = entity->getComponent<AnimationComponent>();
