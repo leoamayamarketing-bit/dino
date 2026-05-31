@@ -152,6 +152,10 @@ void Game::initCollisionRules() {
                 health->takeDamage(1);
                 gameState_.lives = health->health;
                 audioManager_.playSound("damage");
+
+                // Deactivate the enemy so it doesn't keep damaging the player
+                enemy->setActive(false);
+
                 if (health->isDead()) {
                     checkGameOver();
                 }
@@ -176,6 +180,9 @@ void Game::initCollisionRules() {
                 if (trans) {
                     emitCoinParticles(trans->position);
                 }
+
+                // Deactivate coin so it gets cleaned up
+                coin->setActive(false);
             }
         });
 
@@ -191,6 +198,9 @@ void Game::initCollisionRules() {
                 if (trans) {
                     emitPowerUpParticles(trans->position, pu->powerUpType);
                 }
+
+                // Deactivate powerup so it gets cleaned up
+                powerup->setActive(false);
 
                 gameState_.powerUpsCollected++;
 

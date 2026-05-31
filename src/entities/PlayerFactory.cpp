@@ -5,6 +5,7 @@
 #include "../../include/components/CollisionComponent.h"
 #include "../../include/components/PlayerComponent.h"
 #include "../../include/components/AnimationComponent.h"
+#include "../../include/components/HealthComponent.h"
 
 std::unique_ptr<Entity> PlayerFactory::createPlayer(
     Constants::DinoType type, AssetManager& assets, float startX, float startY) {
@@ -164,6 +165,8 @@ std::unique_ptr<Entity> PlayerFactory::createPlayer(
     coll.localOffset = sf::Vector2f(-65.0f, -200.0f);
     coll.isTrigger = false;
     coll.isStatic = false;
+
+    entity->addComponent<HealthComponent>(Constants::INITIAL_LIVES, Constants::MAX_LIVES);
 
     entity->addComponent<PlayerComponent>(type);
 
